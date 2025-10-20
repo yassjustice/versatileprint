@@ -5,6 +5,8 @@ Creates and configures the Flask application instance.
 from flask import Flask
 from flask_login import LoginManager
 from flask_mail import Mail
+from flask_sqlalchemy import SQLAlchemy          # 🧱 Added for Flask-Migrate
+from flask_migrate import Migrate                # 🧱 Added for migrations
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 import os
@@ -15,26 +17,24 @@ from config import config
 login_manager = LoginManager()
 mail = Mail()
 
-# Database session
+# 🧱 Added: SQLAlchemy db + migrate for ORM & migrations
+db = SQLAlchemy()
+migrate = Migrate()
+
+# Database session (legacy style)
 db_engine = None
 db_session = None
 
 def create_app(config_name='development'):
     """
     Application factory function.
-    
-    Args:
-        config_name: Configuration name (development, production, testing)
-    
-    Returns:
-        Configured Flask application instance
     """
     app = Flask(__name__)
     
     # Load configuration
     app.config.from_object(config[config_name])
     
-    # Initialize database
+    # 🧱 Initialize both ORM + manual connection
     init_database(app)
     
     # Initialize extensions
@@ -58,18 +58,25 @@ def init_database(app):
     """Initialize database connection and session."""
     global db_engine, db_session
     
+    # 🧱 Flask-Migrate-compatible config
+    app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI']
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    # Initialize Flask-SQLAlchemy
+    db.init_app(app)
+    
+    # Initialize Flask-Migrate
+    migrate.init_app(app, db)
+
+    # Maintain your existing manual SQLAlchemy engine/session
     db_engine = create_engine(
         app.config['SQLALCHEMY_DATABASE_URI'],
         **app.config.get('SQLALCHEMY_ENGINE_OPTIONS', {})
     )
-    
     session_factory = sessionmaker(bind=db_engine)
     db_session = scoped_session(session_factory)
-    
-    # Make session available to app
     app.db_session = db_session
     
-    # Cleanup session after request
     @app.teardown_appcontext
     def shutdown_session(exception=None):
         db_session.remove()
@@ -94,7 +101,6 @@ def init_extensions(app):
 
 def register_blueprints(app):
     """Register application blueprints."""
-    # API blueprints
     from app.api.auth import auth_bp
     from app.api.users import users_bp
     from app.api.orders import orders_bp
@@ -111,7 +117,6 @@ def register_blueprints(app):
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     app.register_blueprint(reports_bp, url_prefix='/api/reports')
     
-    # Web views blueprint
     from app.views import main
     app.register_blueprint(main)
 
@@ -122,61 +127,31 @@ def register_error_handlers(app):
     @app.errorhandler(400)
     def bad_request(error):
         if request.path.startswith('/api/'):
-            return jsonify({
-                'error': {
-                    'code': 'BAD_REQUEST',
-                    'message': 'Bad request',
-                    'details': str(error)
-                }
-            }), 400
+            return jsonify({'error': {'code': 'BAD_REQUEST', 'message': 'Bad request', 'details': str(error)}}), 400
         return render_template('errors/400.html'), 400
     
     @app.errorhandler(401)
     def unauthorized(error):
         if request.path.startswith('/api/'):
-            return jsonify({
-                'error': {
-                    'code': 'UNAUTHORIZED',
-                    'message': 'Authentication required',
-                    'details': str(error)
-                }
-            }), 401
+            return jsonify({'error': {'code': 'UNAUTHORIZED', 'message': 'Authentication required', 'details': str(error)}}), 401
         return render_template('errors/401.html'), 401
     
     @app.errorhandler(403)
     def forbidden(error):
         if request.path.startswith('/api/'):
-            return jsonify({
-                'error': {
-                    'code': 'PERMISSION_DENIED',
-                    'message': 'Access forbidden',
-                    'details': str(error)
-                }
-            }), 403
+            return jsonify({'error': {'code': 'PERMISSION_DENIED', 'message': 'Access forbidden', 'details': str(error)}}), 403
         return render_template('errors/403.html'), 403
     
     @app.errorhandler(404)
     def not_found(error):
         if request.path.startswith('/api/'):
-            return jsonify({
-                'error': {
-                    'code': 'NOT_FOUND',
-                    'message': 'Resource not found',
-                    'details': str(error)
-                }
-            }), 404
+            return jsonify({'error': {'code': 'NOT_FOUND', 'message': 'Resource not found', 'details': str(error)}}), 404
         return render_template('errors/404.html'), 404
     
     @app.errorhandler(500)
     def internal_error(error):
         if request.path.startswith('/api/'):
-            return jsonify({
-                'error': {
-                    'code': 'INTERNAL_ERROR',
-                    'message': 'Internal server error',
-                    'details': str(error) if app.debug else 'An error occurred'
-                }
-            }), 500
+            return jsonify({'error': {'code': 'INTERNAL_ERROR', 'message': 'Internal server error', 'details': str(error) if app.debug else 'An error occurred'}}), 500
         return render_template('errors/500.html'), 500
 
 def create_upload_dirs(app):
@@ -191,7 +166,4 @@ def register_context_processors(app):
     
     @app.context_processor
     def utility_processor():
-        return {
-            'now': datetime.utcnow,
-            'app_name': 'VersatilesPrint'
-        }
+        return {'now': datetime.utcnow, 'app_name': 'VersatilesPrint'}
