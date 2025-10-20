@@ -254,9 +254,13 @@
 // Load client quota
 fetch('/api/quotas')
     .then(r => r.json())
-    .then(data => {
-        if (data.items && data.items.length > 0) {
-            const quota = data.items[0];
+    .then(response => {
+        console.log('Quota API response:', response);
+        const data = response.data || response;
+        const quotas = data.items || [];
+        
+        if (quotas && quotas.length > 0) {
+            const quota = quotas[0];
             const bwTotal = quota.bw_available + quota.bw_used;
             const colorTotal = quota.color_available + quota.color_used;
             const bwPercentage = bwTotal > 0 ? (quota.bw_used / bwTotal * 100).toFixed(1) : 0;
@@ -299,10 +303,14 @@ fetch('/api/quotas')
 // Load client orders
 fetch('/api/orders')
     .then(r => r.json())
-    .then(data => {
-        if (data.items && data.items.length > 0) {
+    .then(response => {
+        console.log('Orders API response:', response);
+        const data = response.data || response;
+        const orders = data.items || [];
+        
+        if (orders && orders.length > 0) {
             const thisMonth = new Date().getMonth();
-            const thisMonthOrders = data.items.filter(o => new Date(o.created_at).getMonth() === thisMonth);
+            const thisMonthOrders = orders.filter(o => new Date(o.created_at).getMonth() === thisMonth);
             
             document.getElementById('ordersTable').innerHTML = `
                 <table class="table table-hover">
@@ -317,7 +325,7 @@ fetch('/api/orders')
                         </tr>
                     </thead>
                     <tbody>
-                        ${data.items.map(o => `
+                        ${orders.map(o => `
                             <tr class="clickable" onclick="viewOrderDetails(${o.id})">
                                 <td>#${o.id}</td>
                                 <td>${o.bw_quantity || o.bw_count || 0}</td>
@@ -386,10 +394,14 @@ document.getElementById('createOrderForm').addEventListener('submit', async (e) 
 // Load agent orders
 fetch('/api/orders')
     .then(r => r.json())
-    .then(data => {
-        if (data.items && data.items.length > 0) {
-            const active = data.items.filter(o => ['pending', 'validated', 'processing'].includes(o.status));
-            const completed = data.items.filter(o => o.status === 'completed');
+    .then(response => {
+        console.log('Agent Orders API response:', response);
+        const data = response.data || response;
+        const orders = data.items || [];
+        
+        if (orders && orders.length > 0) {
+            const active = orders.filter(o => ['pending', 'validated', 'processing'].includes(o.status));
+            const completed = orders.filter(o => o.status === 'completed');
             const maxCapacity = 10; // Could be fetched from config
             
             document.getElementById('activeOrdersCount').textContent = active.length;
@@ -419,7 +431,7 @@ fetch('/api/orders')
                             </tr>
                         </thead>
                         <tbody>
-                            ${data.items.map(o => `
+                            ${orders.map(o => `
                                 <tr class="clickable" onclick="viewOrderDetails(${o.id})">
                                     <td>#${o.id}</td>
                                     <td>${o.client_email || 'N/A'}</td>
@@ -458,26 +470,53 @@ fetch('/api/orders')
 
 {% if current_user.is_admin %}
 // Load admin stats
+console.log('Loading admin dashboard data...');
+
 Promise.all([
     fetch('/api/users').then(r => r.json()),
     fetch('/api/orders').then(r => r.json()),
     fetch('/api/csv-imports').then(r => r.json())
 ]).then(([users, orders, csvs]) => {
+    console.log('Users API response:', users);
+    console.log('Orders API response:', orders);
+    console.log('CSV API response:', csvs);
+    
+    // Extract data from wrapped response format { data: { items: [], pagination: {} } }
+    const usersData = users.data || users;
+    const ordersData = orders.data || orders;
+    const csvsData = csvs.data || csvs;
+    
+    console.log('Users data:', usersData);
+    console.log('Orders data:', ordersData);
+    console.log('CSVs data:', csvsData);
+    
+    // Get arrays
+    const usersArray = usersData.items || [];
+    const ordersArray = ordersData.items || [];
+    const csvsArray = csvsData.items || [];
+    
+    console.log('Users array length:', usersArray.length);
+    console.log('Orders array length:', ordersArray.length);
+    console.log('CSVs array length:', csvsArray.length);
+    
     // Update stat cards
-    document.getElementById('totalUsers').textContent = users.pagination?.total_items || users.items?.length || 0;
-    document.getElementById('totalOrders').textContent = orders.pagination?.total_items || orders.items?.length || 0;
-    document.getElementById('pendingCSV').textContent = csvs.items?.filter(c => c.status === 'pending_validation').length || 0;
-    document.getElementById('activeClients').textContent = users.items?.filter(u => u.role_name === 'Client' && u.is_active).length || 0;
+    const totalUsers = usersData.pagination?.total_items || usersArray.length;
+    const totalOrders = ordersData.pagination?.total_items || ordersArray.length;
+    
+    document.getElementById('totalUsers').textContent = totalUsers;
+    document.getElementById('totalOrders').textContent = totalOrders;
+    document.getElementById('pendingCSV').textContent = csvsArray.filter(c => c.status === 'pending_validation').length || 0;
+    document.getElementById('activeClients').textContent = usersArray.filter(u => u.role_name === 'Client' && u.is_active).length || 0;
     
     // Orders table
-    if (orders.items && orders.items.length > 0) {
+    if (ordersArray && ordersArray.length > 0) {
         document.getElementById('allOrdersTable').innerHTML = `
             <table class="table table-hover">
                 <thead>
                     <tr><th>ID</th><th>Client</th><th>Agent</th><th>B&W</th><th>Color</th><th>Status</th><th>Created</th><th>Action</th></tr>
                 </thead>
                 <tbody>
-                    ${orders.items.map(o => `
+                    ${ordersArray.map(o => `
                         <tr class="clickable" onclick="viewOrderDetails(${o.id})">
                             <td>#${o.id}</td>
                             <td>${o.client_email || 'N/A'}</td>
@@ -497,14 +536,14 @@ Promise.all([
     }
     
     // Users table
-    if (users.items && users.items.length > 0) {
+    if (usersArray && usersArray.length > 0) {
         document.getElementById('usersTable').innerHTML = `
             <table class="table table-hover">
                 <thead>
                     <tr><th>ID</th><th>Email</th><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
-                    ${users.items.map(u => `
+                    ${usersArray.map(u => `
                         <tr>
                             <td>${u.id}</td>
                             <td>${u.email}</td>
@@ -526,7 +565,7 @@ Promise.all([
     }
     
     // CSV Imports table
-    if (csvs.items && csvs.items.length > 0) {
+    if (csvsArray && csvsArray.length > 0) {
         document.getElementById('csvImportsTable').innerHTML = `
             <table class="table table-hover">
                 <thead>
@@ -541,7 +580,7 @@ Promise.all([
                     </tr>
                 </thead>
                 <tbody>
-                    ${csvs.items.map(csv => `
+                    ${csvsArray.map(csv => `
                         <tr>
                             <td>#${csv.id}</td>
                             <td>${csv.original_filename || 'N/A'}</td>
