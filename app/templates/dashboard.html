@@ -1,0 +1,442 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - VersatilesPrint{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>
+                <i class="bi bi-speedometer2"></i> Dashboard
+                <small class="text-muted">Welcome, {{ current_user.full_name or current_user.email }}</small>
+            </h1>
+            <p class="text-muted">
+                Role: 
+                {% if current_user.is_admin %}
+                    <span class="badge bg-danger">Administrator</span>
+                {% elif current_user.is_agent %}
+                    <span class="badge bg-info">Agent</span>
+                {% elif current_user.is_client %}
+                    <span class="badge bg-success">Client</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    {% if current_user.is_client %}
+    <!-- Client Dashboard -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-bar-chart"></i> My Quota</h5>
+                    <div id="quotaInfo">
+                        <p class="text-muted">Loading quota information...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-file-text"></i> Quick Stats</h5>
+                    <div id="statsInfo">
+                        <p class="text-muted">Loading statistics...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Create New Order</h5>
+        </div>
+        <div class="card-body">
+            <form id="createOrderForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="bwCount" class="form-label">Black & White Prints</label>
+                        <input type="number" class="form-control" id="bwCount" name="bw_count" min="0" value="0">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="colorCount" class="form-label">Color Prints</label>
+                        <input type="number" class="form-control" id="colorCount" name="color_count" min="0" value="0">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="paperDimensions" class="form-label">Paper Size</label>
+                        <select class="form-select" id="paperDimensions" name="paper_dimensions">
+                            <option value="A4">A4</option>
+                            <option value="A3">A3</option>
+                            <option value="Letter">Letter</option>
+                            <option value="Legal">Legal</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="orientation" class="form-label">Orientation</label>
+                        <select class="form-select" id="orientation" name="orientation">
+                            <option value="portrait">Portrait</option>
+                            <option value="landscape">Landscape</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="additionalOptions" class="form-label">Additional Options</label>
+                    <textarea class="form-control" id="additionalOptions" name="additional_options" rows="2" placeholder="Any special instructions..."></textarea>
+                </div>
+                <div id="orderError" class="alert alert-danger d-none"></div>
+                <button type="submit" class="btn btn-primary" id="createOrderBtn">
+                    <i class="bi bi-plus-circle"></i> Create Order
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-list-ul"></i> My Orders</h5>
+        </div>
+        <div class="card-body">
+            <div id="ordersTable">
+                <p class="text-muted">Loading orders...</p>
+            </div>
+        </div>
+    </div>
+
+    {% elif current_user.is_agent %}
+    <!-- Agent Dashboard -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-primary" id="activeOrdersCount">0</h3>
+                    <p class="text-muted">Active Orders</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-success" id="completedOrdersCount">0</h3>
+                    <p class="text-muted">Completed Orders</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-info" id="workloadCapacity">0/10</h3>
+                    <p class="text-muted">Workload Capacity</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-list-check"></i> Assigned Orders</h5>
+        </div>
+        <div class="card-body">
+            <div id="agentOrdersTable">
+                <p class="text-muted">Loading orders...</p>
+            </div>
+        </div>
+    </div>
+
+    {% elif current_user.is_admin %}
+    <!-- Admin Dashboard -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-primary" id="totalUsers">0</h3>
+                    <p class="text-muted">Total Users</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-info" id="totalOrders">0</h3>
+                    <p class="text-muted">Total Orders</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-warning" id="pendingCSV">0</h3>
+                    <p class="text-muted">Pending CSV</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="text-success" id="activeClients">0</h3>
+                    <p class="text-muted">Active Clients</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button">
+                <i class="bi bi-file-text"></i> All Orders
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button">
+                <i class="bi bi-people"></i> Users
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="csv-tab" data-bs-toggle="tab" data-bs-target="#csv" type="button">
+                <i class="bi bi-file-earmark-spreadsheet"></i> CSV Imports
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="adminTabsContent">
+        <div class="tab-pane fade show active" id="orders" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <div id="allOrdersTable">
+                        <p class="text-muted">Loading orders...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-pane fade" id="users" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <button class="btn btn-primary mb-3" onclick="alert('User creation UI coming soon!')">
+                        <i class="bi bi-plus-circle"></i> Add New User
+                    </button>
+                    <div id="usersTable">
+                        <p class="text-muted">Loading users...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-pane fade" id="csv" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <button class="btn btn-primary mb-3" onclick="alert('CSV upload UI coming soon!')">
+                        <i class="bi bi-upload"></i> Upload CSV
+                    </button>
+                    <div id="csvImportsTable">
+                        <p class="text-muted">Loading CSV imports...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Load dashboard data based on role
+{% if current_user.is_client %}
+// Load client quota
+fetch('/api/quotas')
+    .then(r => r.json())
+    .then(data => {
+        if (data.items && data.items.length > 0) {
+            const quota = data.items[0];
+            document.getElementById('quotaInfo').innerHTML = `
+                <p><strong>B&W:</strong> ${quota.bw_used} / ${quota.bw_available + quota.bw_used} prints</p>
+                <div class="progress mb-2">
+                    <div class="progress-bar" style="width: ${(quota.bw_used / (quota.bw_available + quota.bw_used) * 100)}%"></div>
+                </div>
+                <p><strong>Color:</strong> ${quota.color_used} / ${quota.color_available + quota.color_used} prints</p>
+                <div class="progress">
+                    <div class="progress-bar bg-info" style="width: ${(quota.color_used / (quota.color_available + quota.color_used) * 100)}%"></div>
+                </div>
+            `;
+        }
+    });
+
+// Load client orders
+fetch('/api/orders')
+    .then(r => r.json())
+    .then(data => {
+        if (data.items && data.items.length > 0) {
+            document.getElementById('ordersTable').innerHTML = `
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>B&W</th>
+                            <th>Color</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.items.map(o => `
+                            <tr>
+                                <td>#${o.id}</td>
+                                <td>${o.bw_count}</td>
+                                <td>${o.color_count}</td>
+                                <td><span class="badge bg-${o.status === 'completed' ? 'success' : 'warning'}">${o.status}</span></td>
+                                <td>${new Date(o.created_at).toLocaleDateString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('statsInfo').innerHTML = `
+                <p><strong>Total Orders:</strong> ${data.total}</p>
+                <p><strong>This Month:</strong> ${data.items.filter(o => new Date(o.created_at).getMonth() === new Date().getMonth()).length}</p>
+            `;
+        } else {
+            document.getElementById('ordersTable').innerHTML = '<p class="text-muted">No orders yet.</p>';
+        }
+    });
+
+// Handle order creation
+document.getElementById('createOrderForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = {
+        bw_count: parseInt(document.getElementById('bwCount').value) || 0,
+        color_count: parseInt(document.getElementById('colorCount').value) || 0,
+        paper_dimensions: document.getElementById('paperDimensions').value,
+        orientation: document.getElementById('orientation').value,
+        additional_options: document.getElementById('additionalOptions').value
+    };
+    
+    try {
+        const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Order created successfully!');
+            window.location.reload();
+        } else {
+            document.getElementById('orderError').textContent = data.message;
+            document.getElementById('orderError').classList.remove('d-none');
+        }
+    } catch (err) {
+        document.getElementById('orderError').textContent = 'Network error. Please try again.';
+        document.getElementById('orderError').classList.remove('d-none');
+    }
+});
+{% endif %}
+
+{% if current_user.is_agent %}
+// Load agent orders
+fetch('/api/orders')
+    .then(r => r.json())
+    .then(data => {
+        if (data.items && data.items.length > 0) {
+            const active = data.items.filter(o => ['pending', 'validated', 'processing'].includes(o.status));
+            const completed = data.items.filter(o => o.status === 'completed');
+            
+            document.getElementById('activeOrdersCount').textContent = active.length;
+            document.getElementById('completedOrdersCount').textContent = completed.length;
+            document.getElementById('workloadCapacity').textContent = `${active.length}/10`;
+            
+            document.getElementById('agentOrdersTable').innerHTML = `
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Client</th>
+                            <th>B&W</th>
+                            <th>Color</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.items.map(o => `
+                            <tr>
+                                <td>#${o.id}</td>
+                                <td>${o.client_email || 'N/A'}</td>
+                                <td>${o.bw_count}</td>
+                                <td>${o.color_count}</td>
+                                <td><span class="badge bg-${o.status === 'completed' ? 'success' : 'warning'}">${o.status}</span></td>
+                                <td>${new Date(o.created_at).toLocaleDateString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            document.getElementById('agentOrdersTable').innerHTML = '<p class="text-muted">No orders assigned.</p>';
+        }
+    });
+{% endif %}
+
+{% if current_user.is_admin %}
+// Load admin stats
+Promise.all([
+    fetch('/api/users').then(r => r.json()),
+    fetch('/api/orders').then(r => r.json()),
+    fetch('/api/csv-imports').then(r => r.json())
+]).then(([users, orders, csvs]) => {
+    document.getElementById('totalUsers').textContent = users.total || 0;
+    document.getElementById('totalOrders').textContent = orders.total || 0;
+    document.getElementById('pendingCSV').textContent = csvs.items?.filter(c => c.status === 'pending_validation').length || 0;
+    document.getElementById('activeClients').textContent = users.items?.filter(u => u.role_name === 'Client' && u.is_active).length || 0;
+    
+    // Orders table
+    if (orders.items && orders.items.length > 0) {
+        document.getElementById('allOrdersTable').innerHTML = `
+            <table class="table table-hover">
+                <thead>
+                    <tr><th>ID</th><th>Client</th><th>Agent</th><th>B&W</th><th>Color</th><th>Status</th><th>Created</th></tr>
+                </thead>
+                <tbody>
+                    ${orders.items.map(o => `
+                        <tr>
+                            <td>#${o.id}</td>
+                            <td>${o.client_email || 'N/A'}</td>
+                            <td>${o.agent_email || 'Unassigned'}</td>
+                            <td>${o.bw_count}</td>
+                            <td>${o.color_count}</td>
+                            <td><span class="badge bg-${o.status === 'completed' ? 'success' : 'warning'}">${o.status}</span></td>
+                            <td>${new Date(o.created_at).toLocaleDateString()}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+    
+    // Users table
+    if (users.items && users.items.length > 0) {
+        document.getElementById('usersTable').innerHTML = `
+            <table class="table table-hover">
+                <thead>
+                    <tr><th>ID</th><th>Email</th><th>Name</th><th>Role</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                    ${users.items.map(u => `
+                        <tr>
+                            <td>${u.id}</td>
+                            <td>${u.email}</td>
+                            <td>${u.full_name || 'N/A'}</td>
+                            <td><span class="badge bg-${u.role_name === 'Administrator' ? 'danger' : 'info'}">${u.role_name}</span></td>
+                            <td><span class="badge bg-${u.is_active ? 'success' : 'secondary'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+});
+{% endif %}
+</script>
+{% endblock %}
