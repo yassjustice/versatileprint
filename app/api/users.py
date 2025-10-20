@@ -52,6 +52,16 @@ def create_user():
     full_name = data.get('full_name', '').strip()
     role_name = data.get('role', '').strip()
     
+    # Validate required fields
+    if not email:
+        return jsonify(build_error_response('VALIDATION_ERROR', 'Email is required')[0]), 400
+    
+    if not password:
+        return jsonify(build_error_response('VALIDATION_ERROR', 'Password is required')[0]), 400
+    
+    if not role_name:
+        return jsonify(build_error_response('VALIDATION_ERROR', 'Role is required')[0]), 400
+    
     # Validate email
     valid, error = validate_email(email)
     if not valid:
@@ -62,8 +72,8 @@ def create_user():
     if not valid:
         return jsonify(build_error_response('VALIDATION_ERROR', error)[0]), 400
     
-    if not role_name or role_name not in ['Client', 'Agent', 'Administrator']:
-        return jsonify(build_error_response('VALIDATION_ERROR', 'Invalid role')[0]), 400
+    if role_name not in ['Client', 'Agent', 'Administrator']:
+        return jsonify(build_error_response('VALIDATION_ERROR', 'Invalid role. Must be Client, Agent, or Administrator')[0]), 400
     
     try:
         user = User.create_user(email, password, full_name, role_name)

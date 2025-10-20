@@ -82,15 +82,36 @@ const openUserModal = (userId = null) => {
 const saveUser = async () => {
     hideError('userModalError');
     
+    const email = document.getElementById('userEmail').value.trim();
+    const fullName = document.getElementById('userFullName').value.trim();
+    const role = document.getElementById('userRole').value;
+    const isActive = document.getElementById('userActive').checked;
+    
+    // Client-side validation
+    if (!email) {
+        showError('userModalError', 'Email is required');
+        return;
+    }
+    
+    if (!role) {
+        showError('userModalError', 'Please select a role');
+        return;
+    }
+    
     const formData = {
-        email: document.getElementById('userEmail').value,
-        full_name: document.getElementById('userFullName').value,
-        role: document.getElementById('userRole').value,
-        is_active: document.getElementById('userActive').checked
+        email: email,
+        full_name: fullName,
+        role: role,
+        is_active: isActive
     };
     
     if (!currentUserId) {
-        formData.password = document.getElementById('userPassword').value;
+        const password = document.getElementById('userPassword').value;
+        if (!password) {
+            showError('userModalError', 'Password is required');
+            return;
+        }
+        formData.password = password;
     }
     
     const url = currentUserId ? `/api/users/${currentUserId}` : '/api/users';
@@ -115,6 +136,7 @@ const saveUser = async () => {
         }
     } catch (error) {
         hideLoading();
+        console.error('Error saving user:', error);
         showError('userModalError', 'Network error. Please try again.');
     }
 };

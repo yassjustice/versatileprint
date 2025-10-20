@@ -130,6 +130,7 @@ class User(Base, BaseModel, UserMixin):
                 'id': self.role.id,
                 'name': self.role.name
             }
+            data['role_name'] = self.role.name  # Add role_name for convenience
         return data
     
     @classmethod
