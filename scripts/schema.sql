@@ -1,8 +1,10 @@
-"""
-Database initialization script.
-Creates all tables with proper constraints and indexes.
-Run this script to set up the database schema.
-"""
+-- =============================================================================
+-- VersatilesPrint Database Schema
+-- =============================================================================
+-- Database initialization script.
+-- Creates all tables with proper constraints and indexes.
+-- Run this script to set up the database schema.
+-- =============================================================================
 
 -- Drop existing tables if they exist (for clean reinstall)
 -- Uncomment these lines if you need to reset the database

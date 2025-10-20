@@ -51,25 +51,56 @@ def init_database():
             with open(schema_file, 'r', encoding='utf-8') as f:
                 sql_content = f.read()
             
+            # Remove SQL comments before processing
+            lines = []
+            for line in sql_content.split('\n'):
+                # Skip lines that are comments
+                stripped = line.strip()
+                if stripped.startswith('--'):
+                    continue
+                # Remove inline comments
+                if '--' in line:
+                    line = line[:line.index('--')]
+                lines.append(line)
+            
+            clean_sql = '\n'.join(lines)
+            
             # Split by semicolons and execute each statement
-            statements = [s.strip() for s in sql_content.split(';') if s.strip() and not s.strip().startswith('--')]
+            statements = [s.strip() for s in clean_sql.split(';') if s.strip()]
             
             print(f"\nExecuting {len(statements)} SQL statements...")
+            print("This may take a moment...\n")
             
             for i, statement in enumerate(statements, 1):
-                # Skip comments
-                if statement.startswith('--') or statement.startswith('/*'):
+                if not statement:
                     continue
-                
+                    
                 try:
                     conn.execute(text(statement))
                     conn.commit()
+                    # Print progress for major operations
+                    if 'CREATE TABLE' in statement.upper():
+                        table_name = statement.upper().split('CREATE TABLE')[1].split('IF NOT EXISTS')[1].split('(')[0].strip()
+                        print(f"  ✓ Created table: {table_name}")
+                    elif 'INSERT INTO' in statement.upper():
+                        print(f"  ✓ Inserted seed data")
                 except Exception as e:
                     # Continue on duplicate key errors (for idempotent runs)
-                    if 'duplicate' not in str(e).lower():
-                        print(f"\n  Warning on statement {i}: {str(e)[:100]}")
+                    if 'duplicate' not in str(e).lower() and '1050' not in str(e):
+                        print(f"\n  ⚠️  Warning on statement {i}: {str(e)[:150]}")
+                        print(f"     Statement preview: {statement[:100]}...")
             
-            print("✓ Schema created successfully")
+            print("\n✓ Schema execution completed!")
+            
+            # Verify tables were created
+            result = conn.execute(text("SHOW TABLES"))
+            tables = [row[0] for row in result]
+            print(f"\nTables created: {len(tables)}")
+            for table in sorted(tables):
+                print(f"  • {table}")
+            
+            if len(tables) < 8:
+                print(f"\n⚠️  Warning: Expected 8 tables but found {len(tables)}")
             
             # Seed initial data
             print("\nSeeding initial data...")
