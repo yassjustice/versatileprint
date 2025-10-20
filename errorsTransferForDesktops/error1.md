@@ -1,24 +1,22 @@
-(venv) PS C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint> python run.py
-Starting VersatilesPrint application in development mode...
-Server running on http://0.0.0.0:5000
- * Serving Flask app 'app'
- * Debug mode: on
-WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
- * Running on all addresses (0.0.0.0)
- * Running on http://127.0.0.1:5000
- * Running on http://192.168.1.100:5000
-Press CTRL+C to quit
- * Restarting with stat
-Starting VersatilesPrint application in development mode...
-Server running on http://0.0.0.0:5000
- * Debugger is active!
- * Debugger PIN: 753-860-107
-127.0.0.1 - - [20/Oct/2025 12:21:53] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [20/Oct/2025 12:21:53] "GET /static/css/style.css HTTP/1.1" 200 -
-127.0.0.1 - - [20/Oct/2025 12:21:53] "GET /favicon.ico HTTP/1.1" 404 -
-127.0.0.1 - - [20/Oct/2025 12:22:03] "GET /login HTTP/1.1" 200 -
-127.0.0.1 - - [20/Oct/2025 12:22:03] "GET /static/css/style.css HTTP/1.1" 304 -
-127.0.0.1 - - [20/Oct/2025 12:22:26] "POST /api/auth/login HTTP/1.1" 500 -
+Connecting to database...
+Database URL: localhost:3306/versatiles_print
+
+✓ Database connection successful
+
+Reading schema from schema.sql...
+
+Executing 2 SQL statements...
+
+  Warning on statement 1: (pymysql.err.ProgrammingError) (1064, 'You have an error in your SQL syntax; check the manual that c
+
+  Warning on statement 2: (pymysql.err.ProgrammingError) (1064, "You have an error in your SQL syntax; check the manual that c
+✓ Schema created successfully
+
+Seeding initial data...
+
+✗ Error: (pymysql.err.ProgrammingError) (1146, "Table 'versatiles_print.roles' doesn't exist")
+[SQL: SELECT id, name FROM roles]
+(Background on this error at: https://sqlalche.me/e/20/f405)
 Traceback (most recent call last):
   File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
@@ -43,56 +41,14 @@ Traceback (most recent call last):
     err.raise_mysql_exception(self._data)
   File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\pymysql\err.py", line 143, in raise_mysql_exception
     raise errorclass(errno, errval)
-pymysql.err.ProgrammingError: (1146, "Table 'versatiles_print.users' doesn't exist")
+pymysql.err.ProgrammingError: (1146, "Table 'versatiles_print.roles' doesn't exist")
 
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\flask\app.py", line 1478, in __call__ 
-    return self.wsgi_app(environ, start_response)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\flask\app.py", line 1458, in wsgi_app 
-    response = self.handle_exception(e)
-               ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\flask\app.py", line 1455, in wsgi_app 
-    response = self.full_dispatch_request()
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\flask\app.py", line 869, in full_dispatch_request
-    rv = self.handle_user_exception(e)
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\flask\app.py", line 867, in full_dispatch_request
-    rv = self.dispatch_request()
-         ^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\flask\app.py", line 852, in dispatch_request
-    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\app\utils\decorators.py", line 194, in decorated_function    
-    return f(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\app\api\auth.py", line 37, in login
-    success, user, error = AuthService.authenticate(
-                           ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\app\services\auth_service.py", line 30, in authenticate      
-    user = User.get_by_email(email)
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\app\models\user.py", line 139, in get_by_email
-    return session.query(cls).filter(cls.email == email).first()
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2728, in first
-    return self.limit(1)._iter().first()  # type: ignore
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\sqlalchemy\orm\query.py", line 2827, in _iter
-    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
-                                                  ^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2362, in execute
-    return self._execute_internal(
-           ^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2247, in _execute_internal
-    result: Result[Any] = compile_state_cls.orm_execute_statement(
-                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\sqlalchemy\orm\context.py", line 305, in orm_execute_statement
-    result = conn.execute(
-             ^^^^^^^^^^^^^
+  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\scripts\init_db.py", line 78, in init_database
+    result = conn.execute(text("SELECT id, name FROM roles"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1418, in execute
     return meth(
            ^^^^^
@@ -130,23 +86,9 @@ Traceback (most recent call last):
     packet.raise_for_error()
   File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\pymysql\protocol.py", line 221, in raise_for_error
     err.raise_mysql_exception(self._data)
-    packet.raise_for_error()
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\pymysql\protocol.py", line 221, in raise_for_error
-    packet.raise_for_error()
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\pymysql\protocol.py", line 221, in rai    packet.raise_for_error()
-    packet.raise_for_error()
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\pymysql\protocol.py", line 221, in raise_for_error
-    err.raise_mysql_exception(self._data)
   File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\pymysql\err.py", line 143, in raise_mysql_exception
     raise errorclass(errno, errval)
-sqlalchemy.exc.ProgrammingError: (pymysql.err.ProgrammingError) (1146, "Table 'versatiles_print.users' doesn't exist")
-[SQL: SELECT users.id AS users_id, users.email AS users_email, users.password_hash AS users_password_hash, users.full_name AS users_full_name, users.role_id AS users_role_id, users.created_at AS users_created_at, users.is_active AS users_is_active, users.last_login AS users_last_login 
-FROM users
-WHERE users.email = %(email_1)s
- LIMIT %(param_1)s]
-[parameters: {'email_1': 'admin@versatiles.com', 'param_1': 1}]
+sqlalchemy.exc.ProgrammingError: (pymysql.err.ProgrammingError) (1146, "Table 'versatiles_print.roles' doesn't exist")
+[SQL: SELECT id, name FROM roles]
 (Background on this error at: https://sqlalche.me/e/20/f405)
-
-
-
-
+(venv) PS C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint> 
