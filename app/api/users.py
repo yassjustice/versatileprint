@@ -42,44 +42,68 @@ def list_users():
 @admin_required
 def create_user():
     """POST /api/users - Create new user."""
+    from flask import current_app
+    
     data = request.get_json()
     
-    if not data:
-        return jsonify(build_error_response('VALIDATION_ERROR', 'Request body required')[0]), 400
+    # Log the incoming request for debugging
+    current_app.logger.info(f'POST /api/users - Request data: {data}')
     
-    email = data.get('email', '').strip()
-    password = data.get('password', '')
-    full_name = data.get('full_name', '').strip()
-    role_name = data.get('role', '').strip()
+    if not data:
+        error_msg = 'Request body required'
+        current_app.logger.warning(f'User creation failed: {error_msg}')
+        return jsonify(build_error_response('VALIDATION_ERROR', error_msg)[0]), 400
+    
+    email = data.get('email', '').strip() if data.get('email') else ''
+    password = data.get('password', '') if data.get('password') else ''
+    full_name = data.get('full_name', '').strip() if data.get('full_name') else ''
+    role_name = data.get('role', '').strip() if data.get('role') else ''
     
     # Validate required fields
     if not email:
-        return jsonify(build_error_response('VALIDATION_ERROR', 'Email is required')[0]), 400
+        error_msg = 'Email is required'
+        current_app.logger.warning(f'User creation failed: {error_msg}')
+        return jsonify(build_error_response('VALIDATION_ERROR', error_msg)[0]), 400
     
     if not password:
-        return jsonify(build_error_response('VALIDATION_ERROR', 'Password is required')[0]), 400
+        error_msg = 'Password is required'
+        current_app.logger.warning(f'User creation failed: {error_msg}')
+        return jsonify(build_error_response('VALIDATION_ERROR', error_msg)[0]), 400
     
     if not role_name:
-        return jsonify(build_error_response('VALIDATION_ERROR', 'Role is required')[0]), 400
+        error_msg = 'Role is required'
+        current_app.logger.warning(f'User creation failed: {error_msg}')
+        return jsonify(build_error_response('VALIDATION_ERROR', error_msg)[0]), 400
     
     # Validate email
     valid, error = validate_email(email)
     if not valid:
+        current_app.logger.warning(f'User creation failed - Email validation: {error}')
         return jsonify(build_error_response('VALIDATION_ERROR', error)[0]), 400
     
     # Validate password
     valid, error = validate_password(password)
     if not valid:
+        current_app.logger.warning(f'User creation failed - Password validation: {error}')
         return jsonify(build_error_response('VALIDATION_ERROR', error)[0]), 400
     
     if role_name not in ['Client', 'Agent', 'Administrator']:
-        return jsonify(build_error_response('VALIDATION_ERROR', 'Invalid role. Must be Client, Agent, or Administrator')[0]), 400
+        error_msg = f'Invalid role "{role_name}". Must be Client, Agent, or Administrator'
+        current_app.logger.warning(f'User creation failed: {error_msg}')
+        return jsonify(build_error_response('VALIDATION_ERROR', error_msg)[0]), 400
     
     try:
         user = User.create_user(email, password, full_name, role_name)
+        current_app.logger.info(f'User created successfully: {email} (ID: {user.id})')
         return jsonify(build_success_response(user.to_dict(include_role=True), 'User created successfully', 201)[0]), 201
     except ValueError as e:
-        return jsonify(build_error_response('VALIDATION_ERROR', str(e))[0]), 400
+        error_msg = str(e)
+        current_app.logger.error(f'User creation failed - ValueError: {error_msg}')
+        return jsonify(build_error_response('VALIDATION_ERROR', error_msg)[0]), 400
+    except Exception as e:
+        error_msg = f'Unexpected error: {str(e)}'
+        current_app.logger.error(f'User creation failed - Exception: {error_msg}', exc_info=True)
+        return jsonify(build_error_response('SERVER_ERROR', 'An unexpected error occurred')[0]), 500
 
 
 @users_bp.route('/<int:user_id>', methods=['GET'])
