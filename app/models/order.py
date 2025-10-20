@@ -74,7 +74,10 @@ class Order(Base, BaseModel):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'import_id': self.import_id,
             'external_order_id': self.external_order_id,
-            'notes': self.notes
+            'notes': self.notes,
+            # Add email fields for easier display
+            'client_email': self.client.email if self.client else None,
+            'agent_email': self.agent.email if self.agent else None
         }
         
         if include_relations:

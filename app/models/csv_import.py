@@ -62,7 +62,10 @@ class CSVImport(Base, BaseModel):
             'notes': self.notes,
             'row_count': self.row_count,
             'valid_rows': self.valid_rows,
-            'error_rows': self.error_rows
+            'error_rows': self.error_rows,
+            # Add email fields for easier display
+            'uploaded_by_email': self.uploader.email if self.uploader else None,
+            'validated_by_email': self.validator.email if self.validator else None
         }
         
         if include_relations:

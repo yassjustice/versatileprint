@@ -300,26 +300,28 @@ const displayOrderDetails = (order) => {
         <div class="row">
             <div class="col-md-6">
                 <p><strong>Order ID:</strong> #${order.id}</p>
-                <p><strong>Status:</strong> <span class="badge bg-${statusColors[order.status]}">${order.status}</span></p>
+                <p><strong>Status:</strong> <span class="badge bg-${statusColors[order.status] || 'secondary'}">${order.status}</span></p>
                 <p><strong>Client:</strong> ${order.client_email || 'N/A'}</p>
                 <p><strong>Agent:</strong> ${order.agent_email || 'Unassigned'}</p>
             </div>
             <div class="col-md-6">
-                <p><strong>B&W Prints:</strong> ${order.bw_count}</p>
-                <p><strong>Color Prints:</strong> ${order.color_count}</p>
+                <p><strong>B&W Prints:</strong> ${order.bw_quantity || order.bw_count || 0}</p>
+                <p><strong>Color Prints:</strong> ${order.color_quantity || order.color_count || 0}</p>
                 <p><strong>Paper Size:</strong> ${order.paper_dimensions || 'N/A'}</p>
-                <p><strong>Orientation:</strong> ${order.orientation || 'N/A'}</p>
+                <p><strong>Paper Type:</strong> ${order.paper_type || 'N/A'}</p>
+                ${order.finishing ? `<p><strong>Finishing:</strong> ${order.finishing}</p>` : ''}
             </div>
         </div>
-        ${order.additional_options ? `
+        ${order.notes ? `
             <div class="mt-3">
-                <strong>Additional Options:</strong>
-                <p class="text-muted">${order.additional_options}</p>
+                <strong>Notes:</strong>
+                <p class="text-muted">${order.notes}</p>
             </div>
         ` : ''}
         <div class="mt-3">
             <p><strong>Created:</strong> ${formatDate(order.created_at)}</p>
             ${order.updated_at ? `<p><strong>Updated:</strong> ${formatDate(order.updated_at)}</p>` : ''}
+            ${order.external_order_id ? `<p><strong>External ID:</strong> ${order.external_order_id}</p>` : ''}
         </div>
     `;
     
@@ -427,3 +429,69 @@ window.openUserModal = openUserModal;
 window.openCsvModal = openCsvModal;
 window.viewOrderDetails = viewOrderDetails;
 window.openTopupModal = openTopupModal;
+
+// CSV Import Review Functions
+window.reviewCsvImport = async (importId) => {
+    try {
+        const response = await fetch(`/api/csv-imports/${importId}`);
+        const data = await response.json();
+        
+        if (response.ok && data.data) {
+            // Open CSV modal with review data
+            openCsvModal();
+            loadCsvPreview(importId);
+        } else {
+            alert('Failed to load CSV import details');
+        }
+    } catch (error) {
+        console.error('Error loading CSV import:', error);
+        alert('Network error. Please try again.');
+    }
+};
+
+window.viewCsvDetails = async (importId) => {
+    try {
+        const response = await fetch(`/api/csv-imports/${importId}`);
+        const data = await response.json();
+        
+        if (response.ok && data.data) {
+            const csv = data.data;
+            const modalContent = `
+                <div class="card">
+                    <div class="card-body">
+                        <h5>CSV Import #${csv.id}</h5>
+                        <p><strong>Filename:</strong> ${csv.original_filename}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-${
+                            csv.status === 'validated' ? 'success' : 
+                            csv.status === 'rejected' ? 'danger' : 
+                            'warning'
+                        }">${csv.status}</span></p>
+                        <p><strong>Uploaded:</strong> ${new Date(csv.uploaded_at).toLocaleString()}</p>
+                        <p><strong>Uploaded By:</strong> ${csv.uploaded_by_email || 'N/A'}</p>
+                        ${csv.validated_by_email ? `<p><strong>Validated By:</strong> ${csv.validated_by_email}</p>` : ''}
+                        ${csv.row_count ? `
+                            <hr>
+                            <h6>Statistics</h6>
+                            <p>Total Rows: ${csv.row_count}</p>
+                            <p>Valid Rows: ${csv.valid_rows || 0}</p>
+                            <p>Error Rows: ${csv.error_rows || 0}</p>
+                        ` : ''}
+                        ${csv.notes ? `
+                            <hr>
+                            <h6>Notes</h6>
+                            <p>${csv.notes}</p>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            // You could show this in a modal or alert
+            alert('CSV Details:\n' + JSON.stringify(csv, null, 2));
+        } else {
+            alert('Failed to load CSV details');
+        }
+    } catch (error) {
+        console.error('Error loading CSV details:', error);
+        alert('Network error. Please try again.');
+    }
+};
