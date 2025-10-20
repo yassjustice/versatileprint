@@ -1,0 +1,1 @@
+python scripts\create_missing_tables.py
