@@ -4,21 +4,23 @@
 
 {% block content %}
 <div class="container">
-    <div class="row justify-content-center mt-5">
+    <div class="row justify-content-center" style="min-height: 70vh; align-items: center;">
         <div class="col-md-6 text-center">
-            <i class="bi bi-exclamation-octagon text-danger" style="font-size: 5rem;"></i>
-            <h1 class="display-4 mt-3">500</h1>
-            <h2 class="mb-4">Internal Server Error</h2>
-            <p class="lead text-muted">
-                Something went wrong on our end. We're working to fix it.
-            </p>
-            <div class="mt-4">
-                <a href="{{ url_for('main.index') }}" class="btn btn-primary">
-                    <i class="bi bi-house"></i> Go Home
-                </a>
-                <button onclick="window.location.reload()" class="btn btn-outline-primary">
-                    <i class="bi bi-arrow-clockwise"></i> Try Again
-                </button>
+            <div class="error-page fade-in">
+                <i class="bi bi-x-octagon text-danger" style="font-size: 6rem;"></i>
+                <h1 class="display-1 fw-bold text-danger mt-4">500</h1>
+                <h2 class="mb-4">Internal Server Error</h2>
+                <p class="lead text-muted mb-5">
+                    Something went wrong on our end. Our team has been notified and is working to fix the issue.
+                </p>
+                <div class="d-flex gap-3 justify-content-center">
+                    <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                        <i class="bi bi-house-door"></i> Go Home
+                    </a>
+                    <button onclick="location.reload()" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-clockwise"></i> Retry
+                    </button>
+                </div>
             </div>
         </div>
     </div>

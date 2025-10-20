@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - VersatilesPrint{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>
+                <i class="bi bi-bar-chart"></i> Reports & Analytics
+            </h1>
+            <p class="text-muted">View insights and export data</p>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card mb-4 fade-in">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filters</h5>
+        </div>
+        <div class="card-body">
+            <form id="reportFilters">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="reportType" class="form-label">Report Type</label>
+                        <select class="form-select" id="reportType">
+                            <option value="orders">Orders</option>
+                            <option value="quotas">Quota Usage</option>
+                            <option value="users">User Activity</option>
+                            <option value="csv">CSV Imports</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="startDate" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="startDate">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="endDate" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="endDate">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status">
+                            <option value="">All</option>
+                            <option value="pending">Pending</option>
+                            <option value="validated">Validated</option>
+                            <option value="processing">Processing</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" onclick="applyFilters()">
+                        <i class="bi bi-search"></i> Apply Filters
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="exportReport('excel')">
+                        <i class="bi bi-file-earmark-excel"></i> Export Excel
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="exportReport('pdf')">
+                        <i class="bi bi-file-earmark-pdf"></i> Export PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4 fade-in">
+        <div class="col-md-3">
+            <div class="stat-card card">
+                <div class="card-body">
+                    <h3 class="text-primary" id="totalCount">0</h3>
+                    <p class="text-muted">Total Records</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card card">
+                <div class="card-body">
+                    <h3 class="text-success" id="completedCount">0</h3>
+                    <p class="text-muted">Completed</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card card">
+                <div class="card-body">
+                    <h3 class="text-warning" id="pendingCount">0</h3>
+                    <p class="text-muted">Pending</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card card">
+                <div class="card-body">
+                    <h3 class="text-info" id="processingCount">0</h3>
+                    <p class="text-muted">Processing</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card fade-in">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-table"></i> Report Data</h5>
+            <div class="input-group" style="width: 300px;">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="searchInput" placeholder="Search...">
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="reportData">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Loading data...</p>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted">Showing <span id="showingCount">0</span> of <span id="totalRecords">0</span> records</span>
+                </div>
+                <nav>
+                    <ul class="pagination mb-0" id="pagination">
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#">Previous</a>
+                        </li>
+                        <li class="page-item active">
+                            <a class="page-link" href="#">1</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="#">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Modals -->
+{% include 'components/modals.html' %}
+
+<script>
+let currentData = [];
+let filteredData = [];
+let currentPage = 1;
+const itemsPerPage = 20;
+
+// Set default dates (last 30 days)
+const today = new Date();
+const thirtyDaysAgo = new Date(today);
+thirtyDaysAgo.setDate(today.getDate() - 30);
+
+document.getElementById('startDate').valueAsDate = thirtyDaysAgo;
+document.getElementById('endDate').valueAsDate = today;
+
+// Load initial data
+applyFilters();
+
+function applyFilters() {
+    const reportType = document.getElementById('reportType').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const status = document.getElementById('status').value;
+    
+    showLoading('Loading report data...');
+    
+    let url = '/api/orders?';
+    if (startDate) url += `start_date=${startDate}&`;
+    if (endDate) url += `end_date=${endDate}&`;
+    if (status) url += `status=${status}&`;
+    
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            hideLoading();
+            currentData = data.items || [];
+            filteredData = currentData;
+            updateStats();
+            renderTable();
+        })
+        .catch(err => {
+            hideLoading();
+            document.getElementById('reportData').innerHTML = 
+                '<div class="alert alert-danger">Failed to load data. Please try again.</div>';
+        });
+}
+
+function resetFilters() {
+    document.getElementById('reportType').value = 'orders';
+    document.getElementById('status').value = '';
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    document.getElementById('startDate').valueAsDate = thirtyDaysAgo;
+    document.getElementById('endDate').valueAsDate = today;
+    applyFilters();
+}
+
+function updateStats() {
+    const total = filteredData.length;
+    const completed = filteredData.filter(d => d.status === 'completed').length;
+    const pending = filteredData.filter(d => d.status === 'pending').length;
+    const processing = filteredData.filter(d => d.status === 'processing' || d.status === 'validated').length;
+    
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('completedCount').textContent = completed;
+    document.getElementById('pendingCount').textContent = pending;
+    document.getElementById('processingCount').textContent = processing;
+}
+
+function renderTable() {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageData = filteredData.slice(start, end);
+    
+    if (pageData.length === 0) {
+        document.getElementById('reportData').innerHTML = 
+            '<div class="alert alert-info">No data found matching your criteria.</div>';
+        return;
+    }
+    
+    const html = `
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th onclick="sortTable('id')" class="clickable">ID <i class="bi bi-arrow-down-up"></i></th>
+                    <th onclick="sortTable('client_email')" class="clickable">Client <i class="bi bi-arrow-down-up"></i></th>
+                    <th onclick="sortTable('bw_count')" class="clickable">B&W <i class="bi bi-arrow-down-up"></i></th>
+                    <th onclick="sortTable('color_count')" class="clickable">Color <i class="bi bi-arrow-down-up"></i></th>
+                    <th onclick="sortTable('status')" class="clickable">Status <i class="bi bi-arrow-down-up"></i></th>
+                    <th onclick="sortTable('created_at')" class="clickable">Created <i class="bi bi-arrow-down-up"></i></th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${pageData.map(o => `
+                    <tr class="clickable" onclick="viewOrderDetails(${o.id})">
+                        <td>#${o.id}</td>
+                        <td>${o.client_email || 'N/A'}</td>
+                        <td>${o.bw_count}</td>
+                        <td>${o.color_count}</td>
+                        <td><span class="badge bg-${getStatusColor(o.status)}">${o.status}</span></td>
+                        <td>${new Date(o.created_at).toLocaleString()}</td>
+                        <td><button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); viewOrderDetails(${o.id})"><i class="bi bi-eye"></i></button></td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+    
+    document.getElementById('reportData').innerHTML = html;
+    document.getElementById('showingCount').textContent = pageData.length;
+    document.getElementById('totalRecords').textContent = filteredData.length;
+    renderPagination();
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'pending': 'warning',
+        'validated': 'info',
+        'processing': 'primary',
+        'completed': 'success',
+        'cancelled': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
+function sortTable(column) {
+    const isAsc = filteredData[0] && filteredData[0][column] !== undefined;
+    filteredData.sort((a, b) => {
+        if (a[column] < b[column]) return isAsc ? -1 : 1;
+        if (a[column] > b[column]) return isAsc ? 1 : -1;
+        return 0;
+    });
+    renderTable();
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    let html = '';
+    
+    html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">Previous</a>
+    </li>`;
+    
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>
+            </li>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+    
+    html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">Next</a>
+    </li>`;
+    
+    document.getElementById('pagination').innerHTML = html;
+}
+
+function changePage(page) {
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    if (page < 1 || page > totalPages) return;
+    currentPage = page;
+    renderTable();
+}
+
+// Search functionality
+document.getElementById('searchInput').addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    if (searchTerm === '') {
+        filteredData = currentData;
+    } else {
+        filteredData = currentData.filter(item => 
+            JSON.stringify(item).toLowerCase().includes(searchTerm)
+        );
+    }
+    currentPage = 1;
+    updateStats();
+    renderTable();
+});
+
+function exportReport(format) {
+    const reportType = document.getElementById('reportType').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    let url = `/api/reports/${format}?type=${reportType}`;
+    if (startDate) url += `&start_date=${startDate}`;
+    if (endDate) url += `&end_date=${endDate}`;
+    
+    // This would trigger a download in a real implementation
+    alert(`Export to ${format.toUpperCase()} functionality will download the report.\n\nEndpoint: ${url}`);
+    
+    // In production, you would do:
+    // window.location.href = url;
+}
+
+// Make functions available globally
+window.applyFilters = applyFilters;
+window.resetFilters = resetFilters;
+window.sortTable = sortTable;
+window.changePage = changePage;
+window.exportReport = exportReport;
+</script>
+{% endblock %}

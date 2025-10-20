@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - VersatilesPrint{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="mb-4">
+                <h1>
+                    <i class="bi bi-person-circle"></i> My Profile
+                </h1>
+                <p class="text-muted">Manage your account information and preferences</p>
+            </div>
+
+            <!-- Profile Information Card -->
+            <div class="card mb-4 fade-in">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Profile Information</h5>
+                </div>
+                <div class="card-body">
+                    <form id="profileForm">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" value="{{ current_user.email }}" disabled>
+                            <small class="text-muted">Email cannot be changed</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="fullName" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="fullName" name="full_name" 
+                                   value="{{ current_user.full_name or '' }}" placeholder="Enter your full name">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+                            <div>
+                                {% if current_user.is_admin %}
+                                    <span class="badge bg-danger">Administrator</span>
+                                {% elif current_user.is_agent %}
+                                    <span class="badge bg-info">Agent</span>
+                                {% elif current_user.is_client %}
+                                    <span class="badge bg-success">Client</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Account Status</label>
+                            <div>
+                                <span class="badge {{ 'bg-success' if current_user.is_active else 'bg-secondary' }}">
+                                    {{ 'Active' if current_user.is_active else 'Inactive' }}
+                                </span>
+                            </div>
+                        </div>
+                        <div id="profileError" class="alert alert-danger d-none"></div>
+                        <div id="profileSuccess" class="alert alert-success d-none"></div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Changes
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Change Password Card -->
+            <div class="card mb-4 fade-in">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-shield-lock"></i> Change Password</h5>
+                </div>
+                <div class="card-body">
+                    <form id="passwordForm">
+                        <div class="mb-3">
+                            <label for="currentPassword" class="form-label">Current Password</label>
+                            <input type="password" class="form-control" id="currentPassword" 
+                                   name="current_password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="newPassword" 
+                                   name="new_password" required>
+                            <small class="text-muted">
+                                Minimum 8 characters, include uppercase, lowercase, number, and special character
+                            </small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" id="confirmPassword" 
+                                   name="confirm_password" required>
+                        </div>
+                        <div id="passwordError" class="alert alert-danger d-none"></div>
+                        <div id="passwordSuccess" class="alert alert-success d-none"></div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-key"></i> Change Password
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Account Actions -->
+            <div class="card fade-in">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-gear"></i> Account Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-speedometer2"></i> Back to Dashboard
+                        </a>
+                        <button class="btn btn-outline-secondary" onclick="alert('Help center coming soon!')">
+                            <i class="bi bi-question-circle"></i> Help & Support
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Profile Update Form
+document.getElementById('profileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const errorDiv = document.getElementById('profileError');
+    const successDiv = document.getElementById('profileSuccess');
+    errorDiv.classList.add('d-none');
+    successDiv.classList.add('d-none');
+    
+    const formData = {
+        full_name: document.getElementById('fullName').value
+    };
+    
+    try {
+        const response = await fetch('/api/users/{{ current_user.id }}', {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            successDiv.textContent = 'Profile updated successfully!';
+            successDiv.classList.remove('d-none');
+            setTimeout(() => {
+                successDiv.classList.add('d-none');
+            }, 3000);
+        } else {
+            errorDiv.textContent = data.message || 'Failed to update profile';
+            errorDiv.classList.remove('d-none');
+        }
+    } catch (error) {
+        errorDiv.textContent = 'Network error. Please try again.';
+        errorDiv.classList.remove('d-none');
+    }
+});
+
+// Password Change Form
+document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const errorDiv = document.getElementById('passwordError');
+    const successDiv = document.getElementById('passwordSuccess');
+    errorDiv.classList.add('d-none');
+    successDiv.classList.add('d-none');
+    
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    // Client-side validation
+    if (newPassword !== confirmPassword) {
+        errorDiv.textContent = 'New passwords do not match';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    if (newPassword.length < 8) {
+        errorDiv.textContent = 'Password must be at least 8 characters long';
+        errorDiv.classList.remove('d-none');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                old_password: currentPassword,
+                new_password: newPassword
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            successDiv.textContent = 'Password changed successfully!';
+            successDiv.classList.remove('d-none');
+            document.getElementById('passwordForm').reset();
+            setTimeout(() => {
+                successDiv.classList.add('d-none');
+            }, 3000);
+        } else {
+            errorDiv.textContent = data.message || 'Failed to change password';
+            errorDiv.classList.remove('d-none');
+        }
+    } catch (error) {
+        errorDiv.textContent = 'Network error. Please try again.';
+        errorDiv.classList.remove('d-none');
+    }
+});
+</script>
+{% endblock %}

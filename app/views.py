@@ -28,3 +28,17 @@ def login_page():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
     return render_template('auth/login.html')
+
+
+@main.route('/profile')
+@login_required
+def profile():
+    """User profile page."""
+    return render_template('auth/profile.html')
+
+
+@main.route('/reports')
+@login_required
+def reports():
+    """Reports and analytics page."""
+    return render_template('reports.html')
