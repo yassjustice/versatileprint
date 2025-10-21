@@ -256,18 +256,17 @@ fetch('/api/quotas')
     .then(r => r.json())
     .then(response => {
         console.log('Quota API response:', response);
-        const data = response.data || response;
-        const quotas = data.items || [];
+        const quota = response.data || response;
         
-        if (quotas && quotas.length > 0) {
-            const quota = quotas[0];
-            const bwTotal = quota.bw_available + quota.bw_used;
-            const colorTotal = quota.color_available + quota.color_used;
-            const bwPercentage = bwTotal > 0 ? (quota.bw_used / bwTotal * 100).toFixed(1) : 0;
-            const colorPercentage = colorTotal > 0 ? (quota.color_used / colorTotal * 100).toFixed(1) : 0;
+        // API returns {data: {bw: {available, total_limit, percentage_used}, color: {...}}}
+        if (quota && quota.bw && quota.color) {
+            const bwPercentage = quota.bw.percentage_used || 0;
+            const colorPercentage = quota.color.percentage_used || 0;
+            const bwUsed = quota.bw.total_limit - quota.bw.available;
+            const colorUsed = quota.color.total_limit - quota.color.available;
             
             document.getElementById('quotaInfo').innerHTML = `
-                <p><strong>B&W:</strong> ${quota.bw_used} / ${bwTotal} prints (${bwPercentage}% used)</p>
+                <p><strong>B&W:</strong> ${bwUsed} / ${quota.bw.total_limit} prints (${bwPercentage.toFixed(1)}% used)</p>
                 <div class="progress mb-2" style="height: 20px;">
                     <div class="progress-bar ${bwPercentage > 80 ? 'bg-danger' : bwPercentage > 60 ? 'bg-warning' : ''}" 
                          role="progressbar" 
@@ -275,10 +274,10 @@ fetch('/api/quotas')
                          aria-valuenow="${bwPercentage}" 
                          aria-valuemin="0" 
                          aria-valuemax="100">
-                        ${bwPercentage}%
+                        ${bwPercentage.toFixed(1)}%
                     </div>
                 </div>
-                <p class="mt-3"><strong>Color:</strong> ${quota.color_used} / ${colorTotal} prints (${colorPercentage}% used)</p>
+                <p class="mt-3"><strong>Color:</strong> ${colorUsed} / ${quota.color.total_limit} prints (${colorPercentage.toFixed(1)}% used)</p>
                 <div class="progress" style="height: 20px;">
                     <div class="progress-bar bg-info ${colorPercentage > 80 ? 'bg-danger' : colorPercentage > 60 ? 'bg-warning' : ''}" 
                          role="progressbar" 
@@ -286,7 +285,7 @@ fetch('/api/quotas')
                          aria-valuenow="${colorPercentage}" 
                          aria-valuemin="0" 
                          aria-valuemax="100">
-                        ${colorPercentage}%
+                        ${colorPercentage.toFixed(1)}%
                     </div>
                 </div>
                 ${bwPercentage > 80 || colorPercentage > 80 ? '<p class="text-danger mt-2"><small><i class="bi bi-exclamation-triangle"></i> Low quota! Consider requesting a top-up.</small></p>' : ''}
@@ -359,13 +358,28 @@ fetch('/api/orders')
 // Handle order creation
 document.getElementById('createOrderForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    
+    const bwCount = parseInt(document.getElementById('bwCount').value) || 0;
+    const colorCount = parseInt(document.getElementById('colorCount').value) || 0;
+    
+    // Validate at least one quantity
+    if (bwCount === 0 && colorCount === 0) {
+        document.getElementById('orderError').textContent = 'Please specify at least one print quantity (B&W or Color).';
+        document.getElementById('orderError').classList.remove('d-none');
+        return;
+    }
+    
     const formData = {
-        bw_count: parseInt(document.getElementById('bwCount').value) || 0,
-        color_count: parseInt(document.getElementById('colorCount').value) || 0,
-        paper_dimensions: document.getElementById('paperDimensions').value,
-        orientation: document.getElementById('orientation').value,
-        additional_options: document.getElementById('additionalOptions').value
+        bw_quantity: bwCount,
+        color_quantity: colorCount,
+        paper_dimensions: document.getElementById('paperDimensions').value || null,
+        notes: document.getElementById('additionalOptions').value || null
     };
+    
+    const btn = document.getElementById('createOrderBtn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Creating...';
     
     try {
         const response = await fetch('/api/orders', {
@@ -374,18 +388,33 @@ document.getElementById('createOrderForm').addEventListener('submit', async (e) 
             body: JSON.stringify(formData)
         });
         
-        const data = await response.json();
+        const result = await response.json();
+        console.log('Create order response:', result);
         
         if (response.ok) {
             alert('Order created successfully!');
+            document.getElementById('createOrderForm').reset();
+            document.getElementById('orderError').classList.add('d-none');
+            // Close modal if using Bootstrap modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('createOrderModal'));
+            if (modal) modal.hide();
             window.location.reload();
         } else {
-            document.getElementById('orderError').textContent = data.message;
+            // Extract error message from response
+            let errorMsg = result.message || 'Failed to create order';
+            if (result.errors && Array.isArray(result.errors)) {
+                errorMsg += ': ' + result.errors.join(', ');
+            }
+            document.getElementById('orderError').textContent = errorMsg;
             document.getElementById('orderError').classList.remove('d-none');
         }
     } catch (err) {
+        console.error('Order creation error:', err);
         document.getElementById('orderError').textContent = 'Network error. Please try again.';
         document.getElementById('orderError').classList.remove('d-none');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
     }
 });
 {% endif %}
