@@ -1,13 +1,5 @@
 ## Raw Errors
-dashboard:495 
- POST http://127.0.0.1:5000/api/orders 400 (BAD REQUEST)
-(anonymous)	@	dashboard:495
-dashboard:502 Create order response: 
-{error: {…}}
-dashboard:413  GET http://127.0.0.1:5000/api/orders 500 (INTERNAL SERVER ERROR)
-(anonymous) @ dashboard:413
-dashboard:463 Error loading orders: SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
-127.0.0.1 - - [21/Oct/2025 14:26:03] "GET /api/orders HTTP/1.1" 500 -
+127.0.0.1 - - [21/Oct/2025 15:05:33] "GET /api/orders HTTP/1.1" 500 -
 Traceback (most recent call last):
   File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\venv\Lib\site-packages\sqlalchemy\sql\sqltypes.py", line 1625, in _object_value_for_elem
     return self._object_lookup[elem]
@@ -41,7 +33,7 @@ Traceback (most recent call last):
   File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\app\api\orders.py", line 23, in list_orders
     result = OrderService.get_orders_for_user(current_user, status, page, page_size)
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\app\services\order_service.py", line 218, in get_orders_for_user
+  File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\app\services\order_service.py", line 221, in get_orders_for_user
     orders = Order.get_by_client(user.id, status)
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "C:\Users\USER2\Desktop\RECORDS\DevCreation\PrintingCompany\versatileprint\app\models\order.py", line 146, in get_by_client
