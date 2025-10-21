@@ -1,4 +1,48 @@
-# Fixes Changelog
+## Fixes Changelog
+
+### Template
+**Issue:** [Short description of the bug or error]
+**Root Cause:** [Brief explanation of what caused the issue]
+**Fix:** [Summary of the code changes made to resolve the issue]
+**Files Changed:**
+- [file1.py]
+- [file2.py]
+**Test/Validation:** [How the fix was tested or how to validate]
+**Notes:** [Any extra notes]
+
+---
+
+### [2025-10-21] - Enum Case Mismatch & Quota Deduction Bug
+**Issue:** 
+- Orders failing with `LookupError: 'pending' is not among the defined enum values`
+- Quota being consumed even when order creation fails
+- Orders not displaying in UI
+
+**Root Cause:** 
+- Database had lowercase enum values ('pending', 'validated', etc.) while Python code expected uppercase ('PENDING', 'VALIDATED', etc.)
+- The database was created with lowercase values despite schema.sql specifying uppercase
+- Quota was being deducted before order was successfully saved to database
+
+**Fix:**
+1. Updated Python code to use uppercase enum values consistently (OrderStatus.PENDING = 'PENDING')
+2. Fixed all enum comparisons to use uppercase: `OrderStatus[status.upper()]` instead of `OrderStatus(status)`
+3. Changed order creation flow: create order first, then deduct quota (with rollback if quota deduction fails)
+4. Created migration script `scripts/fix_enum_case.py` to update database enum values to uppercase
+
+**Files Changed:**
+- app/models/order.py (enum values, get_by_client, get_by_agent, change_status methods)
+- app/services/order_service.py (create_order, get_orders_for_user methods)
+- scripts/fix_enum_case.py (new migration script)
+
+**Test/Validation:**
+1. Run migration script on DB with existing orders: `python scripts/fix_enum_case.py`
+2. Verify orders can be created without quota loss on failure
+3. Verify orders display correctly in UI
+
+**Notes:**
+- Migration script handles existing orders gracefully, updating lowercase to uppercase
+- Code now properly handles case-insensitive status input (converts to uppercase)
+- Quota is only deducted after successful order save, preventing quota loss on failures# Fixes Changelog
 
 ## Template for Future Issues
 

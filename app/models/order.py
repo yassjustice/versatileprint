@@ -99,22 +99,20 @@ class Order(Base, BaseModel):
     def change_status(self, new_status: str, changed_by_id: int) -> bool:
         """Change order status with validation."""
         # Validate transition
-        current = self.status_value
+        current = self.status_value.upper()
         allowed_transitions = {
             'PENDING': ['VALIDATED'],
             'VALIDATED': ['PROCESSING'],
             'PROCESSING': ['COMPLETED'],
             'COMPLETED': []
         }
-        
-        if new_status not in allowed_transitions.get(current, []):
+        new_status_upper = new_status.upper()
+        if new_status_upper not in allowed_transitions.get(current, []):
             return False
-        
         # Update status
         old_status = current
-        self.status = OrderStatus(new_status)
+        self.status = OrderStatus[new_status_upper]
         self.save()
-        
         # Log audit
         from app.models.audit_log import AuditLog
         AuditLog.log_action(
@@ -123,10 +121,9 @@ class Order(Base, BaseModel):
             details={
                 'order_id': self.id,
                 'old_status': old_status,
-                'new_status': new_status
+                'new_status': new_status_upper
             }
         )
-        
         return True
     
     @classmethod
@@ -134,15 +131,11 @@ class Order(Base, BaseModel):
         """Get orders for a specific client."""
         session = cls.get_session()
         query = session.query(cls).filter_by(client_id=client_id)
-        
         if status:
-            query = query.filter_by(status=OrderStatus(status))
-        
+            query = query.filter_by(status=OrderStatus[status.upper()])
         query = query.order_by(cls.created_at.desc())
-        
         if limit:
             query = query.limit(limit).offset(offset)
-        
         return query.all()
     
     @classmethod
@@ -150,15 +143,11 @@ class Order(Base, BaseModel):
         """Get orders for a specific agent."""
         session = cls.get_session()
         query = session.query(cls).filter_by(agent_id=agent_id)
-        
         if status:
-            query = query.filter_by(status=OrderStatus(status))
-        
+            query = query.filter_by(status=OrderStatus[status.upper()])
         query = query.order_by(cls.created_at.desc())
-        
         if limit:
             query = query.limit(limit).offset(offset)
-        
         return query.all()
     
     @classmethod

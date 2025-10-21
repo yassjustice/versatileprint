@@ -84,15 +84,7 @@ class OrderService:
             if not can_fulfill:
                 return False, None, quota_error
             
-            # Deduct quota FIRST with transaction safety (before order creation)
-            deduct_success, deduct_error = QuotaService.deduct_quota(
-                client_id, bw_quantity, color_quantity, current_month
-            )
-            
-            if not deduct_success:
-                return False, None, f'Failed to deduct quota: {deduct_error}'
-            
-            # Create order after successful quota deduction
+            # Create order first, then deduct quota
             try:
                 order = Order(
                     client_id=client_id,
@@ -109,9 +101,14 @@ class OrderService:
                 )
                 order.save()
             except Exception as order_error:
-                # Rollback quota deduction if order creation fails
-                QuotaService.refund_quota(client_id, bw_quantity, color_quantity, current_month)
-                raise order_error
+                return False, None, f'Failed to create order: {str(order_error)}'
+            deduct_success, deduct_error = QuotaService.deduct_quota(
+                client_id, bw_quantity, color_quantity, current_month
+            )
+            if not deduct_success:
+                # Rollback order creation
+                order.delete()
+                return False, None, f'Failed to deduct quota: {deduct_error}'
             
             # Log creation
             AuditLog.log_action(
@@ -207,7 +204,7 @@ class OrderService:
             query = session.query(Order)
             
             if status:
-                query = query.filter_by(status=OrderStatus(status))
+                query = query.filter_by(status=OrderStatus[status.upper()])
             
             query = query.order_by(Order.created_at.desc())
             orders = query.all()
