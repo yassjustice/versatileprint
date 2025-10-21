@@ -13,10 +13,10 @@ from app.models import BaseModel, Base
 
 class OrderStatus(enum.Enum):
     """Order status enumeration."""
-    PENDING = 'pending'
-    VALIDATED = 'validated'
-    PROCESSING = 'processing'
-    COMPLETED = 'completed'
+    PENDING = 'PENDING'
+    VALIDATED = 'VALIDATED'
+    PROCESSING = 'PROCESSING'
+    COMPLETED = 'COMPLETED'
 
 
 class Order(Base, BaseModel):
@@ -101,10 +101,10 @@ class Order(Base, BaseModel):
         # Validate transition
         current = self.status_value
         allowed_transitions = {
-            'pending': ['validated'],
-            'validated': ['processing'],
-            'processing': ['completed'],
-            'completed': []
+            'PENDING': ['VALIDATED'],
+            'VALIDATED': ['PROCESSING'],
+            'PROCESSING': ['COMPLETED'],
+            'COMPLETED': []
         }
         
         if new_status not in allowed_transitions.get(current, []):

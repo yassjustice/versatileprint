@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
   client_id INT NOT NULL COMMENT 'Must be Client role',
   agent_id INT NULL DEFAULT NULL COMMENT 'Agent who created/owns; NULL if client created',
-  status ENUM('pending','validated','processing','completed') NOT NULL DEFAULT 'pending',
+  status ENUM('PENDING','VALIDATED','PROCESSING','COMPLETED') NOT NULL DEFAULT 'PENDING',
   bw_quantity INT NOT NULL DEFAULT 0,
   color_quantity INT NOT NULL DEFAULT 0,
   paper_dimensions VARCHAR(50) DEFAULT NULL COMMENT 'e.g., A4, A3, 210x297mm',

@@ -156,6 +156,63 @@ class QuotaService:
             return False, f'Failed to deduct quota: {str(e)}'
     
     @staticmethod
+    def refund_quota(client_id: int, bw_quantity: int, color_quantity: int, month: date = None) -> Tuple[bool, Optional[str]]:
+        """
+        Refund quota (rollback a deduction) - used when order creation fails after quota deduction.
+        
+        Args:
+            client_id: Client user ID
+            bw_quantity: B&W quantity to refund
+            color_quantity: Color quantity to refund
+            month: Month to refund to (defaults to current month)
+        
+        Returns:
+            (success, error_message)
+        """
+        if month is None:
+            month = get_current_month()
+        else:
+            month = normalize_month(month)
+        
+        try:
+            session = current_app.db_session
+            
+            # Get quota with lock
+            quota = session.query(ClientQuota).filter_by(
+                client_id=client_id,
+                month=month
+            ).with_for_update().first()
+            
+            if not quota:
+                # If quota doesn't exist, nothing to refund
+                return True, None
+            
+            # Refund quota (subtract from used)
+            quota.bw_used = max(0, quota.bw_used - bw_quantity)
+            quota.color_used = max(0, quota.color_used - color_quantity)
+            
+            session.commit()
+            
+            # Log refund
+            AuditLog.log_action(
+                action='QUOTA_REFUND',
+                user_id=client_id,
+                details={
+                    'client_id': client_id,
+                    'bw_refunded': bw_quantity,
+                    'color_refunded': color_quantity,
+                    'month': month.isoformat(),
+                    'reason': 'Order creation failed'
+                }
+            )
+            
+            return True, None
+            
+        except Exception as e:
+            session.rollback()
+            return False, f'Failed to refund quota: {str(e)}'
+    
+    @staticmethod
     def create_topup(client_id: int, admin_id: int, bw_added: int = 0, color_added: int = 0, notes: str = None) -> Tuple[bool, Optional[QuotaTopup], Optional[str]]:
         """
         Create quota top-up transaction.

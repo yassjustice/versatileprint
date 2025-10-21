@@ -84,31 +84,34 @@ class OrderService:
             if not can_fulfill:
                 return False, None, quota_error
             
-            # Create order
-            order = Order(
-                client_id=client_id,
-                agent_id=agent_id,
-                bw_quantity=bw_quantity,
-                color_quantity=color_quantity,
-                paper_dimensions=paper_dimensions,
-                paper_type=paper_type,
-                finishing=finishing,
-                notes=notes,
-                external_order_id=external_order_id,
-                import_id=import_id,
-                status=OrderStatus.PENDING
-            )
-            order.save()
-            
-            # Deduct quota with transaction safety
+            # Deduct quota FIRST with transaction safety (before order creation)
             deduct_success, deduct_error = QuotaService.deduct_quota(
                 client_id, bw_quantity, color_quantity, current_month
             )
             
             if not deduct_success:
-                # Rollback order creation
-                order.delete()
                 return False, None, f'Failed to deduct quota: {deduct_error}'
+            
+            # Create order after successful quota deduction
+            try:
+                order = Order(
+                    client_id=client_id,
+                    agent_id=agent_id,
+                    bw_quantity=bw_quantity,
+                    color_quantity=color_quantity,
+                    paper_dimensions=paper_dimensions,
+                    paper_type=paper_type,
+                    finishing=finishing,
+                    notes=notes,
+                    external_order_id=external_order_id,
+                    import_id=import_id,
+                    status=OrderStatus.PENDING
+                )
+                order.save()
+            except Exception as order_error:
+                # Rollback quota deduction if order creation fails
+                QuotaService.refund_quota(client_id, bw_quantity, color_quantity, current_month)
+                raise order_error
             
             # Log creation
             AuditLog.log_action(
@@ -164,10 +167,10 @@ class OrderService:
             
             if not success:
                 allowed_transitions = {
-                    'pending': ['validated'],
-                    'validated': ['processing'],
-                    'processing': ['completed'],
-                    'completed': []
+                    'PENDING': ['VALIDATED'],
+                    'VALIDATED': ['PROCESSING'],
+                    'PROCESSING': ['COMPLETED'],
+                    'COMPLETED': []
                 }
                 allowed = allowed_transitions.get(old_status, [])
                 return False, f'Invalid status transition from "{old_status}" to "{new_status}". Allowed: {", ".join(allowed) if allowed else "none"}'
