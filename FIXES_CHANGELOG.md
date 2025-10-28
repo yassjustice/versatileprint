@@ -1,14 +1,89 @@
 ## Fixes Changelog
 
-### Template
-**Issue:** [Short description of the bug or error]
-**Root Cause:** [Brief explanation of what caused the issue]
-**Fix:** [Summary of the code changes made to resolve the issue]
+### [2025-10-28] - Admin User Management CRUD Implementation
+**Issue:** 
+- Admin currently has no real user management functionality
+- Missing DELETE endpoint for users
+- Limited UI with no ability to view details, edit, reset password, or delete users
+
+**Root Cause:** 
+- DELETE endpoint was never implemented in users API
+- Dashboard UI only had basic "Edit" button without full CRUD capabilities
+- No user detail view or password reset functionality from UI
+
+**Fix:**
+1. **Added DELETE Endpoint (`app/api/users.py`):**
+   - Implements soft delete (sets `is_active=false` instead of hard delete)
+   - Prevents self-deletion (admin cannot delete their own account)
+   - Validates no active orders before deletion (prevents orphaned orders)
+   - Logs deletion action in audit_logs table
+   - Returns 400 error with details if user has active orders
+
+2. **Enhanced Users Table UI (`app/templates/dashboard.html`):**
+   - Added more columns: Created date, Last Login
+   - Improved styling with Bootstrap table classes and icons
+   - Added 4 action buttons per user: View, Edit, Reset Password, Delete
+   - Displays "Not set" and "Never" for empty fields
+   - Color-coded role badges (Administrator=red, Agent=blue, Client=green)
+
+3. **Added JavaScript Functions:**
+   - `viewUser(userId)` - Displays user details in alert
+   - `editUser(userId)` - Inline editing with prompts for name, role, and status
+   - `resetUserPassword(userId)` - Admin can reset any user's password
+   - `deleteUser(userId, userEmail)` - Confirmation dialog before deletion
+   - All functions include error handling and user feedback
+
 **Files Changed:**
-- [file1.py]
-- [file2.py]
-**Test/Validation:** [How the fix was tested or how to validate]
-**Notes:** [Any extra notes]
+- `app/api/users.py` (added DELETE endpoint with validation)
+- `app/templates/dashboard.html` (enhanced users table HTML and added 4 JS functions)
+- `FIXES_CHANGELOG.md` (this file)
+
+**Test/Validation:**
+1. Admin login and navigate to Users tab
+2. Test View button - should show user details
+3. Test Edit button - should allow changing name, role, and status
+4. Test Reset Password button - should prompt for new password
+5. Test Delete button:
+   - Cannot delete yourself (button disabled)
+   - Cannot delete user with active orders (shows error)
+   - Can delete inactive users or users with no orders
+6. API Testing:
+   ```bash
+   # Test DELETE endpoint
+   DELETE /api/users/5
+   
+   # Should return 400 if deleting self
+   # Should return 400 if user has active orders
+   # Should return 200 and deactivate user otherwise
+   ```
+
+**Notes:**
+- DELETE is soft delete only - user records remain in database
+- Audit log tracks all user deletions with admin ID and timestamp
+- Frontend uses simple prompts/alerts (could be enhanced with modals later)
+- All actions require admin role (enforced by `@admin_required` decorator)
+
+**API Endpoints Summary:**
+- `GET /api/users` - List all users (with filters)
+- `POST /api/users` - Create new user
+- `GET /api/users/:id` - Get user details
+- `PATCH /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user (soft delete) **[NEW]**
+- `POST /api/users/:id/reset-password` - Reset user password
+
+---
+
+### Template for Future Issues
+
+### [Date] - [Issue Title]
+
+**Issue:** Brief description of the problem
+**Root Cause:** What caused the issue
+**Solution:** How it was fixed
+**Files Changed:** 
+- `path/to/file.ext` - Description of changes
+**Testing:** How to verify the fix
+**Related:** Links to related issues/PRs
 
 ---
 

@@ -170,3 +170,68 @@ def reset_password(user_id):
         return jsonify(build_error_response('VALIDATION_ERROR', error)[0]), 400
     
     return jsonify(build_success_response(message='Password reset successfully')[0]), 200
+
+
+@users_bp.route('/<int:user_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_user(user_id):
+    """DELETE /api/users/:id - Delete user (soft delete by deactivating)."""
+    from flask import current_app
+    
+    # Prevent self-deletion
+    if user_id == current_user.id:
+        return jsonify(build_error_response('VALIDATION_ERROR', 'Cannot delete your own account')[0]), 400
+    
+    user = User.get_by_id(user_id)
+    if not user:
+        return jsonify(build_error_response('NOT_FOUND', 'User not found')[0]), 404
+    
+    # Check if user has active orders
+    if user.is_client:
+        from app.models.order import Order, OrderStatus
+        session = user.get_session()
+        active_orders = session.query(Order).filter(
+            Order.client_id == user_id,
+            Order.status.in_([OrderStatus.PENDING, OrderStatus.VALIDATED, OrderStatus.PROCESSING])
+        ).count()
+        
+        if active_orders > 0:
+            return jsonify(build_error_response(
+                'VALIDATION_ERROR', 
+                f'Cannot delete user with {active_orders} active order(s). Complete or cancel them first.'
+            )[0]), 400
+    
+    elif user.is_agent:
+        from app.models.order import Order, OrderStatus
+        session = user.get_session()
+        active_orders = session.query(Order).filter(
+            Order.agent_id == user_id,
+            Order.status.in_([OrderStatus.PENDING, OrderStatus.VALIDATED, OrderStatus.PROCESSING])
+        ).count()
+        
+        if active_orders > 0:
+            return jsonify(build_error_response(
+                'VALIDATION_ERROR', 
+                f'Cannot delete agent with {active_orders} active order(s). Reassign them first.'
+            )[0]), 400
+    
+    # Perform soft delete (deactivate)
+    user.is_active = False
+    user.save()
+    
+    # Log the action
+    from app.models.audit_log import AuditLog
+    AuditLog.log_action(
+        action='USER_DELETED',
+        user_id=current_user.id,
+        details={
+            'deleted_user_id': user_id,
+            'deleted_user_email': user.email,
+            'deleted_user_role': user.role_name
+        }
+    )
+    
+    current_app.logger.info(f'User {user.email} (ID: {user_id}) deactivated by {current_user.email}')
+    
+    return jsonify(build_success_response(message='User deleted successfully')[0]), 200
