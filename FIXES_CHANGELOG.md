@@ -5,11 +5,13 @@
 - Admin currently has no real user management functionality
 - Missing DELETE endpoint for users
 - Limited UI with no ability to view details, edit, reset password, or delete users
+- **Syntax Error:** `Uncaught SyntaxError: Missing } in template expression` at dashboard:501
 
 **Root Cause:** 
 - DELETE endpoint was never implemented in users API
 - Dashboard UI only had basic "Edit" button without full CRUD capabilities
 - No user detail view or password reset functionality from UI
+- **Template expression nested inside another template expression:** `${u.id === ${current_user.id}}` causing syntax error
 
 **Fix:**
 1. **Added DELETE Endpoint (`app/api/users.py`):**
@@ -25,6 +27,7 @@
    - Added 4 action buttons per user: View, Edit, Reset Password, Delete
    - Displays "Not set" and "Never" for empty fields
    - Color-coded role badges (Administrator=red, Agent=blue, Client=green)
+   - **Fixed template expression:** Changed `${current_user.id}` to `{{ current_user.id }}` (Jinja2 syntax)
 
 3. **Added JavaScript Functions:**
    - `viewUser(userId)` - Displays user details in alert
@@ -35,7 +38,7 @@
 
 **Files Changed:**
 - `app/api/users.py` (added DELETE endpoint with validation)
-- `app/templates/dashboard.html` (enhanced users table HTML and added 4 JS functions)
+- `app/templates/dashboard.html` (enhanced users table HTML, added 4 JS functions, fixed template syntax)
 - `FIXES_CHANGELOG.md` (this file)
 
 **Test/Validation:**
@@ -56,12 +59,14 @@
    # Should return 400 if user has active orders
    # Should return 200 and deactivate user otherwise
    ```
+7. Verify no JavaScript syntax errors in browser console
 
 **Notes:**
 - DELETE is soft delete only - user records remain in database
 - Audit log tracks all user deletions with admin ID and timestamp
 - Frontend uses simple prompts/alerts (could be enhanced with modals later)
 - All actions require admin role (enforced by `@admin_required` decorator)
+- **Template Expression Fix:** In JavaScript template literals within Jinja2 templates, use `{{ var }}` for Jinja2 variables, not `${var}`
 
 **API Endpoints Summary:**
 - `GET /api/users` - List all users (with filters)

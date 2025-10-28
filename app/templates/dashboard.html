@@ -603,7 +603,7 @@ Promise.all([
                                             <i class="bi bi-key"></i>
                                         </button>
                                         <button class="btn btn-outline-danger" onclick="deleteUser(${u.id}, '${u.email}')" 
-                                                ${u.id === ${current_user.id} ? 'disabled title="Cannot delete yourself"' : 'title="Delete"'}>
+                                                ${u.id === {{ current_user.id }} ? 'disabled title="Cannot delete yourself"' : 'title="Delete"'}>
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </div>
