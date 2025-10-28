@@ -1,14 +1,11 @@
 ## Raw Errors
-dashboard:964 Error fetching user: TypeError: userModals.show is not a function
-    at dashboard:961:24
-dashboard:942 Error fetching user: TypeError: userModals.show is not a function
-    at dashboard:939:24
-dashboard:1008 Uncaught TypeError: userModals.show is not a function
-    at resetUserPassword (dashboard:1008:16)
-    at HTMLButtonElement.onclick (dashboard:1:1)
-dashboard:964 Error fetching user: TypeError: userModals.show is not a function
-    at dashboard:961:24
-
+dashboard:1234  PATCH http://127.0.0.1:5000/api/orders/2/assign 500 (INTERNAL SERVER ERROR)
+confirmBtn.onclick @ dashboard:1234
+dashboard:1251 Error assigning order: SyntaxError: Unexpected token '<', "<!doctype "... is not valid JSON
 ## ERROR DESCRIPTION
-- no CRUD still for the orders in admin orders management
-- admin still can't assign orders to agents! 
+- assigning the order to the agent by the admin works in backend and fails in the frontend;
+- channging status doesn't work at all 
+- changing the name for the agent by the admin shows no errors but doens't change the name at all - it's just non responding
+- dashboard metrics for agent view is not displaying any data, all is 0
+- The agent account view has No updated order management using reusable components 
+- the agent cannot currently change the status of the orders asssigned to him
