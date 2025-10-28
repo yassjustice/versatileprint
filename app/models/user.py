@@ -185,12 +185,12 @@ class User(Base, BaseModel, UserMixin):
         if not self.is_agent:
             return 0
         
-        from app.models.order import Order
+        from app.models.order import Order, OrderStatus
         session = self.get_session()
         
         return session.query(Order).filter(
             Order.agent_id == self.id,
-            Order.status.in_(['pending', 'validated', 'processing'])
+            Order.status.in_([OrderStatus.PENDING, OrderStatus.VALIDATED, OrderStatus.PROCESSING])
         ).count()
     
     def can_accept_order(self, max_limit: int) -> bool:

@@ -440,3 +440,75 @@
         <p class="mt-3 mb-0" id="loadingText">Please wait...</p>
     </div>
 </div>
+
+<!-- Agent Order View Modal -->
+<div class="modal fade" id="agentOrderViewModal" tabindex="-1" aria-labelledby="agentOrderViewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="agentOrderViewLabel">
+                    <i class="bi bi-file-text"></i> Order <span id="agentOrderViewId"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold">Client:</label>
+                        <p id="agentOrderViewClient"></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold">Status:</label>
+                        <p id="agentOrderViewStatus"></p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold">Black & White Prints:</label>
+                        <p id="agentOrderViewBW"></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="fw-bold">Color Prints:</label>
+                        <p id="agentOrderViewColor"></p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="fw-bold">Paper Size:</label>
+                        <p id="agentOrderViewPaper"></p>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="fw-bold">Paper Type:</label>
+                        <p id="agentOrderViewType"></p>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="fw-bold">Finishing:</label>
+                        <p id="agentOrderViewFinishing"></p>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="fw-bold">Notes:</label>
+                    <p id="agentOrderViewNotes" class="text-muted fst-italic"></p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="fw-bold">Created:</label>
+                    <p id="agentOrderViewCreated"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="advanceOrderStatusBtn">
+                    <i class="bi bi-arrow-right"></i> Advance Status
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+</div>

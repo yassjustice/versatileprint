@@ -382,8 +382,8 @@ fetch('/api/orders')
         const orders = data.items || [];
         
         if (orders && orders.length > 0) {
-            const active = orders.filter(o => ['pending', 'validated', 'processing'].includes(o.status));
-            const completed = orders.filter(o => o.status === 'completed');
+            const active = orders.filter(o => ['pending', 'validated', 'processing'].includes(o.status.toLowerCase()));
+            const completed = orders.filter(o => o.status.toLowerCase() === 'completed');
             const maxCapacity = 10; // Could be fetched from config
             
             document.getElementById('activeOrdersCount').textContent = active.length;
@@ -398,45 +398,54 @@ fetch('/api/orders')
                 capacityCard.parentElement.classList.add('border-warning');
             }
             
-            document.getElementById('agentOrdersTable').innerHTML = `
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Client</th>
-                                <th>B&W</th>
-                                <th>Color</th>
-                                <th>Status</th>
-                                <th>Created</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${orders.map(o => `
-                                <tr class="clickable" onclick="viewOrderDetails(${o.id})">
-                                    <td>#${o.id}</td>
-                                    <td>${o.client_email || 'N/A'}</td>
-                                    <td>${o.bw_quantity || o.bw_count || 0}</td>
-                                    <td>${o.color_quantity || o.color_count || 0}</td>
-                                    <td><span class="badge bg-${
-                                        o.status === 'completed' ? 'success' : 
-                                        o.status === 'processing' ? 'primary' : 
-                                        o.status === 'validated' ? 'info' :
-                                        'warning'
-                                    }">${o.status}</span></td>
-                                    <td>${new Date(o.created_at).toLocaleDateString()}</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); viewOrderDetails(${o.id})">
-                                            <i class="bi bi-eye"></i> View
-                                        </button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
+            // Use DataTable component for agent orders
+            const agentOrdersTable = new DataTable('agentOrdersTable', [
+                {key: 'id', label: 'ID', width: '60px', render: (val) => `#${val}`},
+                {key: 'client_email', label: 'Client', render: (val) => val || 'N/A'},
+                {key: 'bw_quantity', label: 'B&W', width: '70px'},
+                {key: 'color_quantity', label: 'Color', width: '70px'},
+                {
+                    key: 'status', 
+                    label: 'Status', 
+                    width: '120px',
+                    render: (val) => {
+                        const badges = {
+                            'pending': 'warning',
+                            'validated': 'info',
+                            'processing': 'primary',
+                            'completed': 'success'
+                        };
+                        const badge = badges[val.toLowerCase()] || 'secondary';
+                        return `<span class="badge bg-${badge}">${val}</span>`;
+                    }
+                },
+                {
+                    key: 'created_at', 
+                    label: 'Created', 
+                    width: '120px',
+                    render: (val) => Utils.formatDate(val)
+                }
+            ], {
+                actions: [
+                    {
+                        icon: 'eye',
+                        label: 'View Details',
+                        onClick: (row) => viewAgentOrderDetails(row.id),
+                        className: 'btn-outline-primary'
+                    },
+                    {
+                        icon: 'arrow-right',
+                        label: 'Advance Status',
+                        onClick: (row) => advanceOrderStatus(row.id, row.status),
+                        className: 'btn-outline-success',
+                        condition: (row) => row.status.toLowerCase() !== 'completed'
+                    }
+                ],
+                pageSize: 20,
+                emptyMessage: 'No orders assigned yet.'
+            });
+            
+            agentOrdersTable.setData(orders);
         } else {
             document.getElementById('activeOrdersCount').textContent = '0';
             document.getElementById('completedOrdersCount').textContent = '0';
@@ -448,6 +457,117 @@ fetch('/api/orders')
         console.error('Error loading agent orders:', error);
         document.getElementById('agentOrdersTable').innerHTML = '<div class="alert alert-danger">Failed to load orders</div>';
     });
+
+// Function to view agent order details
+async function viewAgentOrderDetails(orderId) {
+    try {
+        ModalManager.showLoading('Loading order details...');
+        
+        const response = await fetch(`/api/orders/${orderId}`);
+        const result = await response.json();
+        
+        ModalManager.hideLoading();
+        
+        if (!response.ok || !result.data) {
+            throw new Error(result.error?.message || 'Failed to load order');
+        }
+        
+        const order = result.data;
+        
+        // Populate modal
+        document.getElementById('agentOrderViewId').textContent = `#${order.id}`;
+        document.getElementById('agentOrderViewClient').textContent = order.client_email || 'N/A';
+        document.getElementById('agentOrderViewStatus').innerHTML = Utils.badge(order.status, 
+            order.status.toLowerCase() === 'completed' ? 'success' : 
+            order.status.toLowerCase() === 'processing' ? 'primary' : 
+            order.status.toLowerCase() === 'validated' ? 'info' : 'warning');
+        document.getElementById('agentOrderViewBW').textContent = order.bw_quantity || 0;
+        document.getElementById('agentOrderViewColor').textContent = order.color_quantity || 0;
+        document.getElementById('agentOrderViewPaper').textContent = order.paper_dimensions || 'N/A';
+        document.getElementById('agentOrderViewType').textContent = order.paper_type || 'N/A';
+        document.getElementById('agentOrderViewFinishing').textContent = order.finishing || 'None';
+        document.getElementById('agentOrderViewNotes').textContent = order.notes || 'No notes';
+        document.getElementById('agentOrderViewCreated').textContent = Utils.formatDateTime(order.created_at);
+        
+        // Store order ID for status change
+        document.getElementById('agentOrderViewModal').dataset.orderId = order.id;
+        document.getElementById('agentOrderViewModal').dataset.orderStatus = order.status;
+        
+        // Show/hide advance button based on status
+        const advanceBtn = document.getElementById('advanceOrderStatusBtn');
+        if (order.status.toLowerCase() === 'completed') {
+            advanceBtn.classList.add('d-none');
+        } else {
+            advanceBtn.classList.remove('d-none');
+            // Update button text based on current status
+            const nextStatus = {
+                'pending': 'Validate',
+                'validated': 'Start Processing',
+                'processing': 'Complete'
+            }[order.status.toLowerCase()] || 'Advance';
+            advanceBtn.innerHTML = `<i class="bi bi-arrow-right"></i> ${nextStatus}`;
+        }
+        
+        orderModals.show('agentOrderViewModal');
+    } catch (error) {
+        ModalManager.hideLoading();
+        console.error('Error loading order:', error);
+        Utils.showToast('Failed to load order details: ' + error.message, 'error');
+    }
+}
+
+// Function to advance order status
+async function advanceOrderStatus(orderId, currentStatus) {
+    const statusMap = {
+        'pending': 'validated',
+        'validated': 'processing',
+        'processing': 'completed'
+    };
+    
+    const newStatus = statusMap[currentStatus.toLowerCase()];
+    
+    if (!newStatus) {
+        Utils.showToast('Order is already completed', 'info');
+        return;
+    }
+    
+    if (!confirm(`Change order #${orderId} status to "${newStatus}"?`)) {
+        return;
+    }
+    
+    try {
+        ModalManager.showLoading('Updating status...');
+        
+        const response = await fetch(`/api/orders/${orderId}/status`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status: newStatus})
+        });
+        
+        const result = await response.json();
+        ModalManager.hideLoading();
+        
+        if (response.ok) {
+            Utils.showToast('Order status updated successfully!', 'success');
+            location.reload();
+        } else {
+            Utils.showToast(result.error?.message || 'Failed to update status', 'error');
+        }
+    } catch (error) {
+        ModalManager.hideLoading();
+        console.error('Error updating status:', error);
+        Utils.showToast('Failed to update status', 'error');
+    }
+}
+
+// Handle advance status button from modal
+document.getElementById('advanceOrderStatusBtn')?.addEventListener('click', function() {
+    const modal = document.getElementById('agentOrderViewModal');
+    const orderId = modal.dataset.orderId;
+    const currentStatus = modal.dataset.orderStatus;
+    
+    advanceOrderStatus(parseInt(orderId), currentStatus);
+});
 {% endif %}
 
 {% if current_user.is_admin %}

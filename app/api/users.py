@@ -131,28 +131,52 @@ def get_user(user_id):
 @admin_required
 def update_user(user_id):
     """PATCH/PUT /api/users/:id - Update user."""
-    user = User.get_by_id(user_id)
-    if not user:
-        return jsonify(build_error_response('NOT_FOUND', 'User not found')[0]), 404
+    from flask import current_app
     
-    data = request.get_json()
-    if not data:
-        return jsonify(build_error_response('VALIDATION_ERROR', 'Request body required')[0]), 400
+    try:
+        user = User.get_by_id(user_id)
+        if not user:
+            return jsonify(build_error_response('NOT_FOUND', 'User not found')[0]), 404
+        
+        data = request.get_json()
+        if not data:
+            return jsonify(build_error_response('VALIDATION_ERROR', 'Request body required')[0]), 400
+        
+        current_app.logger.info(f'Updating user {user_id} with data: {data}')
+        
+        # Track if any changes were made
+        changes_made = False
+        
+        if 'full_name' in data:
+            user.full_name = data['full_name']
+            changes_made = True
+            current_app.logger.info(f'Updated full_name to: {data["full_name"]}')
+        
+        if 'is_active' in data:
+            user.is_active = bool(data['is_active'])
+            changes_made = True
+            current_app.logger.info(f'Updated is_active to: {data["is_active"]}')
+        
+        if 'role' in data:
+            role = Role.get_by_name(data['role'])
+            if role:
+                user.role_id = role.id
+                changes_made = True
+                current_app.logger.info(f'Updated role to: {data["role"]}')
+            else:
+                return jsonify(build_error_response('VALIDATION_ERROR', f'Invalid role: {data["role"]}')[0]), 400
+        
+        if not changes_made:
+            return jsonify(build_success_response(user.to_dict(include_role=True), 'No changes made')[0]), 200
+        
+        user.save()
+        current_app.logger.info(f'User {user_id} updated successfully')
+        
+        return jsonify(build_success_response(user.to_dict(include_role=True), 'User updated successfully')[0]), 200
     
-    if 'full_name' in data:
-        user.full_name = data['full_name']
-    
-    if 'is_active' in data:
-        user.is_active = bool(data['is_active'])
-    
-    if 'role' in data:
-        role = Role.get_by_name(data['role'])
-        if role:
-            user.role_id = role.id
-    
-    user.save()
-    
-    return jsonify(build_success_response(user.to_dict(include_role=True), 'User updated')[0]), 200
+    except Exception as e:
+        current_app.logger.error(f'Error updating user {user_id}: {str(e)}', exc_info=True)
+        return jsonify(build_error_response('SERVER_ERROR', f'Failed to update user: {str(e)}')[0]), 500
 
 
 @users_bp.route('/<int:user_id>/reset-password', methods=['POST'])
