@@ -1,5 +1,133 @@
 ## Fixes Changelog
 
+### [2025-10-28] - Reusable Modal Components & Order Assignment Implementation
+**Issue:** 
+- User management UI relied on prompt/alert dialogs (poor UX)
+- No order assignment functionality for admins
+- No reusable component system for consistent UI
+- Missing professional toast notifications
+
+**Root Cause:** 
+- Initial implementation used quick alert-based dialogs
+- Order assignment feature was planned but not implemented
+- No JavaScript component library for reusable patterns
+- Bootstrap toast notifications not leveraged
+
+**Fix:**
+1. **Created Reusable Modal Components (`app/templates/components/modals.html`):**
+   - `userViewModal` - Display user details in formatted modal
+   - `userEditModal` - Edit user with form validation
+   - `passwordResetModal` - Reset password with confirmation field
+   - `deleteConfirmModal` - Generic confirmation dialog
+   - `orderViewEditModal` - View/edit order with status change and agent assignment
+   - All modals follow UI Style Guide colors and spacing
+
+2. **Built Component Library (`app/static/js/components.js`):**
+   - `ModalManager` class - Show/hide Bootstrap modals, populate forms, reset on close
+   - `DataTable` class - Sortable, paginated, filterable tables with action buttons
+   - `API` class - Fetch wrapper with error handling and JSON parsing
+   - `Utils` class - Formatters (dates, badges), **Bootstrap Toast notifications**
+   - All components exposed globally via window object
+
+3. **Enhanced Toast Notifications (`Utils.showToast`):**
+   - Bootstrap 5 toast with auto-hide (3s success, 5s error)
+   - Color-coded icons (success=green check, error=red X, warning=yellow triangle, info=blue circle)
+   - Toast container in `base.html` (bottom-right position)
+   - Automatic cleanup after toast hidden
+   - Graceful fallback to alert if container missing
+
+4. **Migrated User Management to Modals (`app/templates/dashboard.html`):**
+   - Replaced `alert()` dialogs with `userViewModal` for viewing details
+   - Replaced `prompt()` chains with `userEditModal` form
+   - Replaced nested prompts with `passwordResetModal` (includes password confirmation)
+   - Replaced `confirm()` with `deleteConfirmModal` (reusable for any delete action)
+   - All functions now use `Utils.showToast()` for feedback
+   - Form validation client-side before submission
+   - Event listeners for submit actions (edit, password reset, delete confirm)
+
+5. **Implemented Order Assignment Feature:**
+   - **Backend:** Added `PATCH /api/orders/:id/assign` endpoint (`app/api/orders.py`)
+     - Validates agent exists and is active
+     - Checks agent workload limits (default 10 active orders)
+     - Supports assign, reassign, and unassign (agent_id=null)
+     - Logs all assignments to audit_logs
+     - Sends notifications to assigned/unassigned agents (in-app + email)
+     - Fixed missing imports for Order and User models
+   
+   - **Frontend:** Order management functions in dashboard
+     - `viewOrderDetails(orderId)` - Populate order modal with all fields
+     - `loadAgentsForOrder(currentAgentId)` - Fetch active agents for dropdown
+     - Agent assignment dropdown in `orderViewEditModal`
+     - "Assign Agent" button triggers assignment API
+     - Status change form within same modal
+     - Real-time feedback via toasts
+
+6. **Added Components Script to Dashboard:**
+   - Loaded via `{% block extra_js %}` in base template
+   - Available before dashboard initialization code runs
+   - All modals initialized with `ModalManager` instances
+
+**Files Changed:**
+- `app/templates/components/modals.html` - Created 5 reusable modals
+- `app/static/js/components.js` - Created 4 component classes, enhanced toast
+- `app/templates/base.html` - Added toast container div
+- `app/templates/dashboard.html` - Migrated user management to modals, added order assignment UI, added components.js script
+- `app/api/orders.py` - Added assign_order endpoint, fixed imports
+- `FIXES_CHANGELOG.md` - This update
+
+**New API Endpoint:**
+```
+PATCH /api/orders/:id/assign
+Body: { "agent_id": 5 }  // or null to unassign
+Returns: { "data": { "order": {...}, "assigned_to": {...} } }
+```
+
+**Test/Validation:**
+1. **User Management with Modals:**
+   - Click View button → Modal shows user details (not alert)
+   - Click Edit button → Form modal with dropdowns (not prompts)
+   - Edit and submit → Toast shows success/error
+   - Click Reset Password → Modal with password + confirmation fields
+   - Submit password reset → Validates match, shows toast
+   - Click Delete → Confirmation modal (not confirm dialog)
+   - Confirm delete → Toast notification, table refreshes
+
+2. **Order Assignment:**
+   - Login as admin
+   - Click order in table → Modal opens
+   - Agent dropdown populated with active agents
+   - Select agent → Click "Assign Agent" → Toast confirmation
+   - Unassign by selecting "Unassigned" option
+   - Verify notifications sent to agent (check notifications API)
+   - Verify audit log entry created
+
+3. **Toast Notifications:**
+   - Success toasts show green check icon, auto-hide in 3s
+   - Error toasts show red X icon, auto-hide in 5s
+   - Multiple toasts stack vertically in bottom-right
+   - Toasts removed from DOM after hidden (no memory leak)
+
+4. **Component Reusability:**
+   - ModalManager works for all modals
+   - Utils.showToast() called from any function
+   - Modals reset on close (forms cleared)
+
+**Notes:**
+- All modals follow 60/30/10 color rule from UI Style Guide
+- Toast icons use Bootstrap Icons (bi-check-circle-fill, etc.)
+- Agent assignment validates workload limit server-side
+- Order assignment sends email notifications automatically via NotificationService
+- Components.js can be extended for future features (CSV validation modal, quota modal, etc.)
+- Template linter warnings for Jinja2 syntax (`{% if %}`) in JavaScript blocks are benign
+
+**Future Enhancements:**
+- Use DataTable component for users/orders tables (pagination, sorting, filtering)
+- Add CSV import preview modal using ModalManager
+- Client-side quota validation before order submission
+- Real-time notifications via WebSocket (currently polling)
+
+---
+
 ### [2025-10-28] - Admin User Management CRUD Implementation
 **Issue:** 
 - Admin currently has no real user management functionality

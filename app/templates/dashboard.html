@@ -248,6 +248,12 @@
 <!-- Include Modals -->
 {% include 'components/modals.html' %}
 
+{% endblock %}
+
+{% block extra_js %}
+<!-- Load Components Library -->
+<script src="{{ url_for('static', filename='js/components.js') }}"></script>
+
 <script>
 // Load dashboard data based on role
 {% if current_user.is_client %}
@@ -685,17 +691,39 @@ Promise.all([
 });
 {% endif %}
 
-// User Management Functions
+// User Management Functions using ModalManager
+const userModals = new ModalManager();
+
 function viewUser(userId) {
     fetch(`/api/users/${userId}`)
         .then(r => r.json())
         .then(response => {
             const user = response.data || response;
-            alert(`User Details:\n\nID: ${user.id}\nEmail: ${user.email}\nName: ${user.full_name || 'N/A'}\nRole: ${user.role_name}\nStatus: ${user.is_active ? 'Active' : 'Inactive'}\nCreated: ${user.created_at ? new Date(user.created_at).toLocaleString() : 'N/A'}\nLast Login: ${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}`);
+            
+            // Populate view modal
+            document.getElementById('viewUserId').textContent = user.id;
+            document.getElementById('viewUserEmail').textContent = user.email;
+            document.getElementById('viewUserName').textContent = user.full_name || 'Not set';
+            document.getElementById('viewUserRole').textContent = user.role_name || 'N/A';
+            
+            const statusBadge = user.is_active 
+                ? '<span class="badge bg-success">Active</span>' 
+                : '<span class="badge bg-secondary">Inactive</span>';
+            document.getElementById('viewUserStatus').innerHTML = statusBadge;
+            
+            document.getElementById('viewUserCreated').textContent = user.created_at 
+                ? new Date(user.created_at).toLocaleString() 
+                : 'N/A';
+            document.getElementById('viewUserLastLogin').textContent = user.last_login 
+                ? new Date(user.last_login).toLocaleString() 
+                : 'Never';
+            
+            // Show modal
+            userModals.show('userViewModal');
         })
         .catch(error => {
             console.error('Error fetching user:', error);
-            alert('Failed to load user details');
+            Utils.showToast('Failed to load user details', 'error');
         });
 }
 
@@ -705,53 +733,81 @@ function editUser(userId) {
         .then(response => {
             const user = response.data || response;
             
-            const newName = prompt('Edit Full Name:', user.full_name || '');
-            if (newName === null) return; // Cancelled
+            // Populate edit modal
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editUserEmail').value = user.email;
+            document.getElementById('editUserName').value = user.full_name || '';
+            document.getElementById('editUserRole').value = user.role_name || 'Client';
+            document.getElementById('editUserActive').checked = user.is_active;
             
-            const newRole = prompt('Edit Role (Client/Agent/Administrator):', user.role_name);
-            if (newRole === null) return; // Cancelled
-            
-            const newStatus = confirm('User Active?') ? true : false;
-            
-            fetch(`/api/users/${userId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    full_name: newName,
-                    role: newRole,
-                    is_active: newStatus
-                })
-            })
-            .then(r => r.json())
-            .then(result => {
-                if (result.data) {
-                    alert('User updated successfully!');
-                    location.reload();
-                } else {
-                    alert('Error: ' + (result.error?.message || 'Failed to update user'));
-                }
-            })
-            .catch(error => {
-                console.error('Error updating user:', error);
-                alert('Failed to update user');
-            });
+            // Show modal
+            userModals.show('userEditModal');
         })
         .catch(error => {
             console.error('Error fetching user:', error);
-            alert('Failed to load user details');
+            Utils.showToast('Failed to load user details', 'error');
         });
 }
 
-function resetUserPassword(userId) {
-    const newPassword = prompt('Enter new password for this user:');
-    if (!newPassword) return;
+// Handle edit user form submission
+document.getElementById('editUserForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
     
-    if (newPassword.length < 8) {
-        alert('Password must be at least 8 characters long');
+    const userId = document.getElementById('editUserId').value;
+    const formData = {
+        full_name: document.getElementById('editUserName').value,
+        role: document.getElementById('editUserRole').value,
+        is_active: document.getElementById('editUserActive').checked
+    };
+    
+    fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.data) {
+            Utils.showToast('User updated successfully!', 'success');
+            userModals.hide('userEditModal');
+            location.reload();
+        } else {
+            Utils.showToast(result.error?.message || 'Failed to update user', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating user:', error);
+        Utils.showToast('Failed to update user', 'error');
+    });
+});
+
+function resetUserPassword(userId) {
+    // Populate password reset modal
+    document.getElementById('resetPasswordUserId').value = userId;
+    document.getElementById('resetPasswordNew').value = '';
+    document.getElementById('resetPasswordConfirm').value = '';
+    
+    // Show modal
+    userModals.show('passwordResetModal');
+}
+
+// Handle password reset form submission
+document.getElementById('passwordResetForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const userId = document.getElementById('resetPasswordUserId').value;
+    const newPassword = document.getElementById('resetPasswordNew').value;
+    const confirmPassword = document.getElementById('resetPasswordConfirm').value;
+    
+    if (newPassword !== confirmPassword) {
+        Utils.showToast('Passwords do not match', 'error');
         return;
     }
     
-    if (!confirm('Are you sure you want to reset this user\'s password?')) return;
+    if (newPassword.length < 8) {
+        Utils.showToast('Password must be at least 8 characters long', 'error');
+        return;
+    }
     
     fetch(`/api/users/${userId}/reset-password`, {
         method: 'POST',
@@ -761,21 +817,31 @@ function resetUserPassword(userId) {
     .then(r => r.json())
     .then(result => {
         if (result.data || result.message) {
-            alert('Password reset successfully!');
+            Utils.showToast('Password reset successfully!', 'success');
+            userModals.hide('passwordResetModal');
         } else {
-            alert('Error: ' + (result.error?.message || 'Failed to reset password'));
+            Utils.showToast(result.error?.message || 'Failed to reset password', 'error');
         }
     })
     .catch(error => {
         console.error('Error resetting password:', error);
-        alert('Failed to reset password');
+        Utils.showToast('Failed to reset password', 'error');
     });
-}
+});
 
 function deleteUser(userId, userEmail) {
-    if (!confirm(`Are you sure you want to delete user "${userEmail}"?\n\nThis will deactivate the user account.`)) {
-        return;
-    }
+    // Populate delete confirmation modal
+    document.getElementById('deleteConfirmMessage').textContent = 
+        `Are you sure you want to delete user "${userEmail}"? This will deactivate the user account.`;
+    document.getElementById('deleteConfirmUserId').value = userId;
+    
+    // Show modal
+    userModals.show('deleteConfirmModal');
+}
+
+// Handle delete confirmation
+document.getElementById('confirmDeleteBtn')?.addEventListener('click', function() {
+    const userId = document.getElementById('deleteConfirmUserId').value;
     
     fetch(`/api/users/${userId}`, {
         method: 'DELETE'
@@ -783,17 +849,143 @@ function deleteUser(userId, userEmail) {
     .then(r => r.json())
     .then(result => {
         if (result.data || result.message) {
-            alert('User deleted successfully!');
+            Utils.showToast('User deleted successfully!', 'success');
+            userModals.hide('deleteConfirmModal');
             location.reload();
         } else {
-            alert('Error: ' + (result.error?.message || 'Failed to delete user'));
+            Utils.showToast(result.error?.message || 'Failed to delete user', 'error');
         }
     })
     .catch(error => {
         console.error('Error deleting user:', error);
-        alert('Failed to delete user');
+        Utils.showToast('Failed to delete user', 'error');
     });
+});
+
+// Order Management Functions
+const orderModals = new ModalManager();
+
+function viewOrderDetails(orderId) {
+    fetch(`/api/orders/${orderId}`)
+        .then(r => r.json())
+        .then(response => {
+            const order = response.data || response;
+            
+            // Populate order view/edit modal
+            document.getElementById('orderViewEditId').value = order.id;
+            document.getElementById('orderViewEditClient').value = order.client_email || 'N/A';
+            document.getElementById('orderViewEditAgent').value = order.agent_id || '';
+            document.getElementById('orderViewEditBW').value = order.bw_quantity || 0;
+            document.getElementById('orderViewEditColor').value = order.color_quantity || 0;
+            document.getElementById('orderViewEditPaperDim').value = order.paper_dimensions || '';
+            document.getElementById('orderViewEditPaperType').value = order.paper_type || '';
+            document.getElementById('orderViewEditFinishing').value = order.finishing || '';
+            document.getElementById('orderViewEditNotes').value = order.notes || '';
+            
+            const statusBadge = `<span class="badge bg-${
+                order.status === 'completed' ? 'success' : 
+                order.status === 'processing' ? 'primary' : 
+                order.status === 'validated' ? 'info' : 'warning'
+            }">${order.status}</span>`;
+            document.getElementById('orderViewEditStatusDisplay').innerHTML = statusBadge;
+            document.getElementById('orderViewEditStatus').value = order.status || 'pending';
+            
+            document.getElementById('orderViewEditCreated').textContent = Utils.formatDateTime(order.created_at);
+            document.getElementById('orderViewEditUpdated').textContent = Utils.formatDateTime(order.updated_at);
+            
+            // Load agents for assignment dropdown
+            loadAgentsForOrder(order.agent_id);
+            
+            // Show modal
+            orderModals.show('orderViewEditModal');
+        })
+        .catch(error => {
+            console.error('Error fetching order:', error);
+            Utils.showToast('Failed to load order details', 'error');
+        });
 }
+
+function loadAgentsForOrder(currentAgentId) {
+    fetch('/api/users?role=Agent&is_active=true')
+        .then(r => r.json())
+        .then(response => {
+            const users = response.data || response;
+            const agents = users.items || users;
+            
+            const select = document.getElementById('orderViewEditAgent');
+            select.innerHTML = '<option value="">Unassigned</option>';
+            
+            agents.forEach(agent => {
+                const option = document.createElement('option');
+                option.value = agent.id;
+                option.textContent = `${agent.full_name || agent.email} (${agent.email})`;
+                if (agent.id === currentAgentId) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading agents:', error);
+        });
+}
+
+// Handle order status change
+document.getElementById('orderViewEditForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const orderId = document.getElementById('orderViewEditId').value;
+    const newStatus = document.getElementById('orderViewEditStatus').value;
+    
+    fetch(`/api/orders/${orderId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.data) {
+            Utils.showToast('Order status updated successfully!', 'success');
+            orderModals.hide('orderViewEditModal');
+            location.reload();
+        } else {
+            Utils.showToast(result.error?.message || 'Failed to update order status', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating order status:', error);
+        Utils.showToast('Failed to update order status', 'error');
+    });
+});
+
+// Handle agent assignment
+document.getElementById('assignOrderAgentBtn')?.addEventListener('click', function() {
+    const orderId = document.getElementById('orderViewEditId').value;
+    const agentId = document.getElementById('orderViewEditAgent').value;
+    
+    const payload = agentId ? { agent_id: parseInt(agentId) } : { agent_id: null };
+    
+    fetch(`/api/orders/${orderId}/assign`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.data) {
+            const message = agentId ? 'Order assigned successfully!' : 'Order unassigned successfully!';
+            Utils.showToast(message, 'success');
+            orderModals.hide('orderViewEditModal');
+            location.reload();
+        } else {
+            Utils.showToast(result.error?.message || 'Failed to assign order', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error assigning order:', error);
+        Utils.showToast('Failed to assign order', 'error');
+    });
+});
 
 </script>
 {% endblock %}
