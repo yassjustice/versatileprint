@@ -31,7 +31,15 @@ def list_users():
         active_filter = is_active.lower() == 'true'
         users = [u for u in users if u.is_active == active_filter]
     
-    users_data = [u.to_dict(include_role=True) for u in users]
+    # Include active_orders_count for agents
+    users_data = []
+    for u in users:
+        user_dict = u.to_dict(include_role=True)
+        if u.is_agent:
+            user_dict['active_orders_count'] = u.get_active_orders_count()
+            user_dict['max_capacity'] = 10  # Could come from config
+        users_data.append(user_dict)
+    
     result = paginate_query_results(users_data, page, page_size)
     
     return jsonify(build_success_response(result)[0]), 200

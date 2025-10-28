@@ -507,7 +507,16 @@ Promise.all([
                             <td>${o.color_quantity || o.color_count || 0}</td>
                             <td><span class="badge bg-${o.status === 'completed' ? 'success' : o.status === 'processing' ? 'primary' : 'warning'}">${o.status}</span></td>
                             <td>${new Date(o.created_at).toLocaleDateString()}</td>
-                            <td><button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); viewOrderDetails(${o.id})"><i class="bi bi-eye"></i></button></td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button class="btn btn-outline-primary" onclick="event.stopPropagation(); viewOrderDetailsAdmin(${o.id})" title="View/Edit">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-info" onclick="event.stopPropagation(); assignOrderToAgent(${o.id})" title="Assign Agent">
+                                        <i class="bi bi-person-plus"></i>
+                                    </button>
+                                </div>
+                            </td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -812,6 +821,174 @@ document.getElementById('confirmDeleteBtn')?.addEventListener('click', function(
 // Order Management Functions
 const orderModals = new ModalManager();
 
+// View and edit order details for admin
+async function viewOrderDetailsAdmin(orderId) {
+    try {
+        ModalManager.showLoading('Loading order details...');
+        
+        // Fetch order details
+        const orderResponse = await fetch(`/api/orders/${orderId}`);
+        const orderData = await orderResponse.json();
+        
+        if (!orderResponse.ok || !orderData.data) {
+            throw new Error(orderData.error?.message || 'Failed to load order');
+        }
+        
+        const order = orderData.data;
+        
+        // Fetch agents list for assignment dropdown
+        const agentsResponse = await fetch('/api/users?role=Agent');
+        const agentsData = await agentsResponse.json();
+        const agents = agentsData.data?.items || agentsData.items || [];
+        
+        ModalManager.hideLoading();
+        
+        // Populate modal
+        document.getElementById('orderViewEditId').value = order.id;
+        document.getElementById('orderViewEditIdDisplay').value = `#${order.id}`;
+        document.getElementById('orderViewEditStatus').value = order.status;
+        
+        // Show current status as badge
+        const statusBadges = {
+            'pending': 'warning',
+            'validated': 'info',
+            'processing': 'primary',
+            'completed': 'success'
+        };
+        document.getElementById('orderViewEditStatusDisplay').innerHTML = 
+            `<span class="badge bg-${statusBadges[order.status] || 'secondary'}">${order.status}</span>`;
+        
+        document.getElementById('orderViewEditClient').value = order.client_email || 'N/A';
+        
+        // Populate agents dropdown
+        const agentSelect = document.getElementById('orderViewEditAgent');
+        agentSelect.innerHTML = '<option value="">Unassigned</option>';
+        agents.forEach(agent => {
+            const selected = agent.id === order.agent_id ? 'selected' : '';
+            agentSelect.innerHTML += `<option value="${agent.id}" ${selected}>${agent.full_name || agent.email}</option>`;
+        });
+        
+        document.getElementById('orderViewEditBW').value = order.bw_quantity || 0;
+        document.getElementById('orderViewEditColor').value = order.color_quantity || 0;
+        document.getElementById('orderViewEditPaperDim').value = order.paper_dimensions || 'N/A';
+        document.getElementById('orderViewEditPaperType').value = order.paper_type || 'N/A';
+        document.getElementById('orderViewEditFinishing').value = order.finishing || 'None';
+        document.getElementById('orderViewEditNotes').value = order.notes || '';
+        document.getElementById('orderViewEditCreated').textContent = new Date(order.created_at).toLocaleString();
+        document.getElementById('orderViewEditUpdated').textContent = order.updated_at ? new Date(order.updated_at).toLocaleString() : 'N/A';
+        
+        // Show modal
+        orderModals.show('orderViewEditModal');
+    } catch (error) {
+        ModalManager.hideLoading();
+        console.error('Error loading order:', error);
+        Utils.showToast('Failed to load order details: ' + error.message, 'error');
+    }
+}
+
+// Quick assign order to agent
+async function assignOrderToAgent(orderId) {
+    try {
+        ModalManager.showLoading('Loading agents...');
+        
+        // Fetch agents
+        const agentsResponse = await fetch('/api/users?role=Agent');
+        const agentsData = await agentsResponse.json();
+        const agents = agentsData.data?.items || agentsData.items || [];
+        
+        // Fetch current order
+        const orderResponse = await fetch(`/api/orders/${orderId}`);
+        const orderData = await orderResponse.json();
+        const order = orderData.data;
+        
+        ModalManager.hideLoading();
+        
+        // Build agent selection HTML
+        let agentOptions = '<option value="">Unassigned</option>';
+        agents.forEach(agent => {
+            const selected = agent.id === order.agent_id ? 'selected' : '';
+            const activeOrders = agent.active_orders_count || 0;
+            const capacity = agent.max_capacity || 10;
+            const label = `${agent.full_name || agent.email} (${activeOrders}/${capacity})`;
+            agentOptions += `<option value="${agent.id}" ${selected}>${label}</option>`;
+        });
+        
+        // Use SweetAlert or simple prompt
+        const agentSelect = document.createElement('select');
+        agentSelect.className = 'form-select';
+        agentSelect.innerHTML = agentOptions;
+        agentSelect.value = order.agent_id || '';
+        
+        // Create simple dialog
+        const dialog = document.createElement('div');
+        dialog.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:30px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:10000;min-width:400px';
+        dialog.innerHTML = `
+            <h5 class="mb-3"><i class="bi bi-person-plus"></i> Assign Order #${orderId}</h5>
+            <div class="mb-3">
+                <label class="form-label">Select Agent:</label>
+                ${agentSelect.outerHTML}
+            </div>
+            <div class="d-flex gap-2 justify-content-end">
+                <button class="btn btn-secondary" id="cancelAssign">Cancel</button>
+                <button class="btn btn-primary" id="confirmAssign"><i class="bi bi-check"></i> Assign</button>
+            </div>
+        `;
+        
+        // Add overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999';
+        
+        document.body.appendChild(overlay);
+        document.body.appendChild(dialog);
+        
+        // Event handlers
+        const selectEl = dialog.querySelector('select');
+        const cancelBtn = dialog.querySelector('#cancelAssign');
+        const confirmBtn = dialog.querySelector('#confirmAssign');
+        
+        const cleanup = () => {
+            document.body.removeChild(overlay);
+            document.body.removeChild(dialog);
+        };
+        
+        cancelBtn.onclick = cleanup;
+        overlay.onclick = cleanup;
+        
+        confirmBtn.onclick = async () => {
+            const selectedAgentId = selectEl.value;
+            cleanup();
+            
+            try {
+                ModalManager.showLoading('Assigning order...');
+                
+                const response = await fetch(`/api/orders/${orderId}/assign`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ agent_id: selectedAgentId || null })
+                });
+                
+                const result = await response.json();
+                ModalManager.hideLoading();
+                
+                if (response.ok) {
+                    Utils.showToast(selectedAgentId ? 'Order assigned successfully!' : 'Order unassigned successfully!', 'success');
+                    location.reload();
+                } else {
+                    Utils.showToast(result.error?.message || 'Failed to assign order', 'error');
+                }
+            } catch (error) {
+                ModalManager.hideLoading();
+                console.error('Error assigning order:', error);
+                Utils.showToast('Failed to assign order', 'error');
+            }
+        };
+    } catch (error) {
+        ModalManager.hideLoading();
+        console.error('Error loading agents:', error);
+        Utils.showToast('Failed to load agents', 'error');
+    }
+}
+
 // Handle order status change
 document.getElementById('saveOrderStatusBtn')?.addEventListener('click', function() {
     const orderId = document.getElementById('orderViewEditId').value;
@@ -838,7 +1015,7 @@ document.getElementById('saveOrderStatusBtn')?.addEventListener('click', functio
     });
 });
 
-// Handle agent assignment
+// Handle agent assignment from modal
 document.getElementById('assignOrderAgentBtn')?.addEventListener('click', function() {
     const orderId = document.getElementById('orderViewEditId').value;
     const agentId = document.getElementById('orderViewEditAgent').value;

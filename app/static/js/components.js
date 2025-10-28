@@ -8,6 +8,42 @@
 // ============================================================================
 
 class ModalManager {
+    constructor() {
+        this.modals = {};
+    }
+
+    /**
+     * Get or create Bootstrap modal instance
+     */
+    getModal(modalId) {
+        const modalEl = document.getElementById(modalId);
+        if (!modalEl) {
+            console.error(`Modal element not found: ${modalId}`);
+            return null;
+        }
+        
+        if (!this.modals[modalId]) {
+            this.modals[modalId] = new bootstrap.Modal(modalEl);
+        }
+        return this.modals[modalId];
+    }
+
+    /**
+     * Show modal by ID
+     */
+    show(modalId) {
+        const modal = this.getModal(modalId);
+        if (modal) modal.show();
+    }
+
+    /**
+     * Hide modal by ID
+     */
+    hide(modalId) {
+        const modal = this.getModal(modalId);
+        if (modal) modal.hide();
+    }
+
     /**
      * Show loading overlay
      */
@@ -48,7 +84,7 @@ class ModalManager {
     }
 
     /**
-     * Close modal by ID
+     * Close modal by ID (static version)
      */
     static closeModal(modalId) {
         const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
@@ -56,7 +92,7 @@ class ModalManager {
     }
 
     /**
-     * Open modal by ID
+     * Open modal by ID (static version)
      */
     static openModal(modalId) {
         const modal = new bootstrap.Modal(document.getElementById(modalId));
