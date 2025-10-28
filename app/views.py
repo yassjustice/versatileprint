@@ -1,8 +1,9 @@
 """
 Web views blueprint for HTML pages.
 """
-from flask import Blueprint, render_template, redirect, url_for
+from flask import Blueprint, render_template, redirect, url_for, send_from_directory
 from flask_login import login_required, current_user
+import os
 
 # Create blueprint with 'main' name for url_for references
 main = Blueprint('main', __name__)
@@ -42,3 +43,16 @@ def profile():
 def reports():
     """Reports and analytics page."""
     return render_template('reports.html')
+
+
+@main.route('/favicon.ico')
+def favicon():
+    """Serve favicon."""
+    # Try to serve from static directory, or return 204 No Content if not found
+    static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'app', 'static')
+    favicon_path = os.path.join(static_dir, 'favicon.ico')
+    if os.path.exists(favicon_path):
+        return send_from_directory(static_dir, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+    # Return empty response with 204 No Content to avoid 404
+    from flask import Response
+    return Response(status=204)

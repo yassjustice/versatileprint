@@ -931,9 +931,7 @@ function loadAgentsForOrder(currentAgentId) {
 }
 
 // Handle order status change
-document.getElementById('orderViewEditForm')?.addEventListener('submit', function(e) {
-    e.preventDefault();
-    
+document.getElementById('saveOrderStatusBtn')?.addEventListener('click', function() {
     const orderId = document.getElementById('orderViewEditId').value;
     const newStatus = document.getElementById('orderViewEditStatus').value;
     
