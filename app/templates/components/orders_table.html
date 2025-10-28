@@ -1,0 +1,36 @@
+<!-- Client Orders Table -->
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>B&W</th>
+                <th>Color</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for order in orders %}
+            <tr>
+                <td>#{{ order.id }}</td>
+                <td>{{ order.bw_quantity or order.bw_count or 0 }}</td>
+                <td>{{ order.color_quantity or order.color_count or 0 }}</td>
+                <td>
+                    <span class="badge bg-{{ 
+                        'success' if order.status == 'completed' else 
+                        'primary' if order.status == 'processing' else 
+                        'warning' }}">{{ order.status }}</span>
+                </td>
+                <td>{{ order.created_at|formatdate }}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewOrderDetails({{ order.id }})">
+                        <i class="bi bi-eye"></i> View
+                    </button>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>

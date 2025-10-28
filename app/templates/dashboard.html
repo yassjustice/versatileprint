@@ -100,7 +100,7 @@
         </div>
         <div class="card-body">
             <div id="ordersTable">
-                <p class="text-muted">Loading orders...</p>
+                {% include 'components/orders_table.html' %}
             </div>
         </div>
     </div>
@@ -251,8 +251,9 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Load Components Library -->
+<!-- Load Dependencies -->
 <script src="{{ url_for('static', filename='js/components.js') }}"></script>
+<script src="{{ url_for('static', filename='js/orders.js') }}"></script>
 
 <script>
 // Load dashboard data based on role
@@ -305,61 +306,7 @@ fetch('/api/quotas')
         document.getElementById('quotaInfo').innerHTML = '<div class="alert alert-danger">Failed to load quota information</div>';
     });
 
-// Load client orders
-fetch('/api/orders')
-    .then(r => r.json())
-    .then(response => {
-        console.log('Orders API response:', response);
-        const data = response.data || response;
-        const orders = data.items || [];
-        
-        if (orders && orders.length > 0) {
-            const thisMonth = new Date().getMonth();
-            const thisMonthOrders = orders.filter(o => new Date(o.created_at).getMonth() === thisMonth);
-            
-            document.getElementById('ordersTable').innerHTML = `
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>B&W</th>
-                            <th>Color</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${orders.map(o => `
-                            <tr class="clickable" onclick="viewOrderDetails(${o.id})">
-                                <td>#${o.id}</td>
-                                <td>${o.bw_quantity || o.bw_count || 0}</td>
-                                <td>${o.color_quantity || o.color_count || 0}</td>
-                                <td><span class="badge bg-${o.status === 'completed' ? 'success' : o.status === 'processing' ? 'primary' : 'warning'}">${o.status}</span></td>
-                                <td>${new Date(o.created_at).toLocaleDateString()}</td>
-                                <td><button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); viewOrderDetails(${o.id})"><i class="bi bi-eye"></i></button></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-            
-            document.getElementById('statsInfo').innerHTML = `
-                <p><strong>Total Orders:</strong> ${data.pagination?.total_items || data.items.length}</p>
-                <p><strong>This Month:</strong> ${thisMonthOrders.length}</p>
-                <p><strong>Pending:</strong> ${data.items.filter(o => o.status === 'pending').length}</p>
-                <p><strong>Completed:</strong> ${data.items.filter(o => o.status === 'completed').length}</p>
-            `;
-        } else {
-            document.getElementById('ordersTable').innerHTML = '<p class="text-muted">No orders yet. Create your first order above!</p>';
-            document.getElementById('statsInfo').innerHTML = '<p class="text-muted">No order statistics available.</p>';
-        }
-    })
-    .catch(error => {
-        console.error('Error loading orders:', error);
-        document.getElementById('ordersTable').innerHTML = '<div class="alert alert-danger">Failed to load orders</div>';
-        document.getElementById('statsInfo').innerHTML = '<div class="alert alert-danger">Failed to load statistics</div>';
-    });
+// Orders are now handled by orders.js
 
 // Handle order creation
 document.getElementById('createOrderForm').addEventListener('submit', async (e) => {
@@ -864,71 +811,6 @@ document.getElementById('confirmDeleteBtn')?.addEventListener('click', function(
 
 // Order Management Functions
 const orderModals = new ModalManager();
-
-function viewOrderDetails(orderId) {
-    fetch(`/api/orders/${orderId}`)
-        .then(r => r.json())
-        .then(response => {
-            const order = response.data || response;
-            
-            // Populate order view/edit modal
-            document.getElementById('orderViewEditId').value = order.id;
-            document.getElementById('orderViewEditClient').value = order.client_email || 'N/A';
-            document.getElementById('orderViewEditAgent').value = order.agent_id || '';
-            document.getElementById('orderViewEditBW').value = order.bw_quantity || 0;
-            document.getElementById('orderViewEditColor').value = order.color_quantity || 0;
-            document.getElementById('orderViewEditPaperDim').value = order.paper_dimensions || '';
-            document.getElementById('orderViewEditPaperType').value = order.paper_type || '';
-            document.getElementById('orderViewEditFinishing').value = order.finishing || '';
-            document.getElementById('orderViewEditNotes').value = order.notes || '';
-            
-            const statusBadge = `<span class="badge bg-${
-                order.status === 'completed' ? 'success' : 
-                order.status === 'processing' ? 'primary' : 
-                order.status === 'validated' ? 'info' : 'warning'
-            }">${order.status}</span>`;
-            document.getElementById('orderViewEditStatusDisplay').innerHTML = statusBadge;
-            document.getElementById('orderViewEditStatus').value = order.status || 'pending';
-            
-            document.getElementById('orderViewEditCreated').textContent = Utils.formatDateTime(order.created_at);
-            document.getElementById('orderViewEditUpdated').textContent = Utils.formatDateTime(order.updated_at);
-            
-            // Load agents for assignment dropdown
-            loadAgentsForOrder(order.agent_id);
-            
-            // Show modal
-            orderModals.show('orderViewEditModal');
-        })
-        .catch(error => {
-            console.error('Error fetching order:', error);
-            Utils.showToast('Failed to load order details', 'error');
-        });
-}
-
-function loadAgentsForOrder(currentAgentId) {
-    fetch('/api/users?role=Agent&is_active=true')
-        .then(r => r.json())
-        .then(response => {
-            const users = response.data || response;
-            const agents = users.items || users;
-            
-            const select = document.getElementById('orderViewEditAgent');
-            select.innerHTML = '<option value="">Unassigned</option>';
-            
-            agents.forEach(agent => {
-                const option = document.createElement('option');
-                option.value = agent.id;
-                option.textContent = `${agent.full_name || agent.email} (${agent.email})`;
-                if (agent.id === currentAgentId) {
-                    option.selected = true;
-                }
-                select.appendChild(option);
-            });
-        })
-        .catch(error => {
-            console.error('Error loading agents:', error);
-        });
-}
 
 // Handle order status change
 document.getElementById('saveOrderStatusBtn')?.addEventListener('click', function() {
